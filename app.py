@@ -45,7 +45,7 @@ def get_metrics():
             conn = pyodbc.connect(conn_str, timeout=5)
             cursor = conn.cursor()
 
-            # ---------- 1. GET DRIVES & SPACE ----------
+            # ---------- 1. DRIVES ----------
             drive_query = """
                 SELECT DISTINCT
                     vs.volume_mount_point AS DriveLetter,
@@ -65,7 +65,7 @@ def get_metrics():
                     "total_gb": float(row.TotalSpaceGB)
                 })
 
-            # ---------- 2. GET DATABASES & BACKUP STATUS ----------
+            # ---------- 2. DATABASES, BACKUP, AND LOG WAIT REASON ----------
             db_query = """
                 WITH BackupCTE AS (
                     SELECT database_name, MAX(backup_finish_date) as LastBackup
@@ -77,6 +77,7 @@ def get_metrics():
                     d.name AS DatabaseName, 
                     d.state_desc AS Status, 
                     ISNULL(SUM(mf.size * 8.0 / 1024), 0) AS Size_in_MB,
+                    d.log_reuse_wait_desc AS LogWait,
                     CASE 
                         WHEN d.name = 'tempdb' THEN 'N/A'
                         WHEN b.LastBackup >= DATEADD(hh, -24, GETDATE()) THEN 'OK'
@@ -86,7 +87,7 @@ def get_metrics():
                 LEFT JOIN sys.master_files mf ON d.database_id = mf.database_id
                 LEFT JOIN BackupCTE b ON d.name = b.database_name
                 WHERE d.database_id > 4 
-                GROUP BY d.name, d.state_desc, b.LastBackup;
+                GROUP BY d.name, d.state_desc, d.log_reuse_wait_desc, b.LastBackup;
             """
             cursor.execute(db_query)
             all_databases = []
@@ -95,25 +96,54 @@ def get_metrics():
                     "name": row.DatabaseName,
                     "status": row.Status,
                     "size_mb": round(row.Size_in_MB, 2),
-                    "backup_status": row.BackupStatus
+                    "log_wait": row.LogWait,
+                    "backup_status": row.BackupStatus,
+                    "log_used_pct": 0 # Default value, updated below
                 })
 
             alerts = []
 
-            # ---------- 3. LOG FILE CHECK ----------
+            # ---------- 3. AVAILABILITY GROUP SYNC HEALTH ----------
+            ag_query = """
+                SELECT 
+                    DB_NAME(drs.database_id) AS DatabaseName,
+                    ar.replica_server_name AS SecondaryServer,
+                    drs.synchronization_state_desc AS SyncState,
+                    CAST(ISNULL(drs.log_send_queue_size, 0) / 1024.0 AS DECIMAL(18,2)) AS LogSendQueueMB,
+                    CAST(ISNULL(drs.redo_queue_size, 0) / 1024.0 AS DECIMAL(18,2)) AS RedoQueueMB
+                FROM sys.dm_hadr_database_replica_states drs WITH (nolock)
+                JOIN sys.availability_replicas ar WITH (nolock) ON drs.replica_id = ar.replica_id
+                WHERE drs.is_local = 0;
+            """
+            cursor.execute(ag_query)
+            ag_sync = []
+            for row in cursor.fetchall():
+                ag_sync.append({
+                    "database": row.DatabaseName,
+                    "secondary": row.SecondaryServer,
+                    "state": row.SyncState,
+                    "log_queue_mb": float(row.LogSendQueueMB),
+                    "redo_queue_mb": float(row.RedoQueueMB)
+                })
+                if float(row.LogSendQueueMB) > 500:
+                    alerts.append(f"🚨 CRITICAL: AG Replica '{row.SecondaryServer}' has a Log Send Queue of {row.LogSendQueueMB}MB for '{row.DatabaseName}'!")
+
+            # ---------- 4. NEW LOG FILE USAGE (No longer an alert!) ----------
             log_query = """
                 SELECT RTRIM(instance_name) AS DatabaseName, cntr_value AS LogUsedPercent
                 FROM sys.dm_os_performance_counters 
                 WHERE counter_name = 'Percent Log Used' 
-                  AND instance_name NOT IN ('master', 'tempdb', 'model', 'msdb', '_Total')
-                  AND cntr_value > 50; 
+                  AND instance_name NOT IN ('master', 'tempdb', 'model', 'msdb', '_Total');
             """
             cursor.execute(log_query)
-            for row in cursor.fetchall():
-                alerts.append(f"⚠️ Warning: Transaction Log for '{row.DatabaseName}' is {row.LogUsedPercent}% full!")
+            log_usage_dict = {row.DatabaseName: row.LogUsedPercent for row in cursor.fetchall()}
+            
+            # Attach log percentage to the correct database
+            for db in all_databases:
+                if db['name'] in log_usage_dict:
+                    db['log_used_pct'] = log_usage_dict[db['name']]
 
-            # ---------- 4. BLOCKING & LONG QUERY CHECK WITH SQL TEXT ----------
-            # Added CROSS APPLY to get the exact query text and filtered out sleeping/background tasks
+            # ---------- 5. BLOCKING & LONG QUERY CHECK WITH SQL TEXT ----------
             blocking_query = """
                 SELECT 
                     r.session_id, 
@@ -128,18 +158,13 @@ def get_metrics():
                   AND (r.blocking_session_id <> 0 OR r.total_elapsed_time > 60000);
             """
             cursor.execute(blocking_query)
-            
             long_queries = []
             for row in cursor.fetchall():
                 if row.blocking_session_id != 0:
                     alerts.append(f"🚨 CRITICAL: Session {row.session_id} on '{row.DatabaseName}' is BLOCKED by Session {row.blocking_session_id}!")
-                elif row.SecondsRunning > 60:
-                    alerts.append(f"⚠️ Warning: A query on '{row.DatabaseName}' has been running for {row.SecondsRunning} seconds.")
                 
-                # Protect against massive queries crashing the UI by slicing to 300 characters
                 safe_query_text = str(row.QueryText) if row.QueryText else "N/A"
-                if len(safe_query_text) > 300:
-                    safe_query_text = safe_query_text[:300] + " ... [TRUNCATED]"
+                if len(safe_query_text) > 300: safe_query_text = safe_query_text[:300] + " ... [TRUNCATED]"
 
                 long_queries.append({
                     "session_id": row.session_id,
@@ -147,6 +172,37 @@ def get_metrics():
                     "seconds": row.SecondsRunning,
                     "query_text": safe_query_text
                 })
+
+            # ---------- 6. THE "SILENT KILLER" (SLEEPING OPEN TRANSACTIONS > 5 MINS) ----------
+            sleep_query = """
+                SELECT 
+                    st.session_id,
+                    DB_NAME(s.database_id) AS DatabaseName,
+                    DATEDIFF(SECOND, tat.transaction_begin_time, GETDATE()) AS SecondsRunning,
+                    t.text AS QueryText
+                FROM sys.dm_tran_active_transactions tat WITH (nolock)
+                INNER JOIN sys.dm_tran_session_transactions st WITH (nolock) ON tat.transaction_id = st.transaction_id
+                INNER JOIN sys.dm_exec_sessions s WITH (nolock) ON s.session_id = st.session_id
+                INNER JOIN sys.dm_exec_connections c WITH (nolock) ON c.session_id = st.session_id
+                CROSS APPLY sys.dm_exec_sql_text(c.most_recent_sql_handle) t
+                WHERE st.is_user_transaction = 1 
+                  AND s.status = 'sleeping'
+                  AND DATEDIFF(MINUTE, tat.transaction_begin_time, GETDATE()) > 5;
+            """
+            cursor.execute(sleep_query)
+            for row in cursor.fetchall():
+                if not any(q['session_id'] == row.session_id for q in long_queries):
+                    alerts.append(f"🚨 CRITICAL: Session {row.session_id} on '{row.DatabaseName}' is SLEEPING with an open transaction for {row.SecondsRunning}s!")
+                    
+                    safe_query_text = str(row.QueryText) if row.QueryText else "N/A"
+                    if len(safe_query_text) > 300: safe_query_text = safe_query_text[:300] + " ... [TRUNCATED]"
+
+                    long_queries.append({
+                        "session_id": row.session_id,
+                        "database": f"{row.DatabaseName} [SLEEPING]",
+                        "seconds": row.SecondsRunning,
+                        "query_text": safe_query_text
+                    })
 
             if len(alerts) == 0:
                 alerts.append("No active server alerts")
@@ -157,13 +213,15 @@ def get_metrics():
                 "server_level_alerts": alerts,
                 "drives": all_drives,
                 "databases": all_databases,
-                "long_queries": long_queries
+                "long_queries": long_queries,
+                "ag_sync": ag_sync
             })
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
     return jsonify({"error": "Unsupported database type"})
+
 
 # ---------- PRODUCTION-SAFE INDEX CHECKING ----------
 @app.route('/api/indexes', methods=['GET'])
