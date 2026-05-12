@@ -5,58 +5,185 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Database Health Monitor</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f9; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .controls { margin-bottom: 20px; display: flex; gap: 10px; }
-        select, button { padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
-        button { background: #007bff; color: white; cursor: pointer; border: none; }
-        button:hover { background: #0056b3; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #007bff; color: white; }
-        .status-online { color: green; font-weight: bold; }
-        .alerts { background: #ffdddd; padding: 10px; border-left: 4px solid red; margin-bottom: 15px; }
+        /* Modern System Font & Background */
+        :root { --primary: #0ea5e9; --primary-hover: #0284c7; --bg: #f0f2f5; --text: #334155; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background: var(--bg); color: var(--text); margin: 0; }
+
+        /* Main Container & Cards */
+        .container { max-width: 1200px; margin: auto; }
+        .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); margin-bottom: 25px; border: 1px solid var(--border); }
+        .card h3 { margin-top: 0; color: #0f172a; font-size: 1.1rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; margin-bottom: 15px; }
+
+        /* THE FIX: Sticky Header Card */
+        .header-card {
+            background: rgba(255, 255, 255, 0.95); /* Slightly transparent */
+            backdrop-filter: blur(10px); /* Apple-style blur effect */
+            border-radius: 12px;
+            padding: 20px 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* Slightly stronger shadow so it pops */
+            margin-bottom: 25px;
+            border: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
+
+            /* These 3 lines lock it to the top! */
+            position: sticky;
+            top: 15px;
+            z-index: 1000;
+        }
+        .header-card h2 { margin: 0; color: #0f172a; font-size: 1.6rem; }
+
+        /* Controls & Buttons */
+        .controls { display: flex; gap: 15px; align-items: center; }
+        select { padding: 10px 15px; font-size: 15px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; background: #fff; min-width: 250px; cursor: pointer; }
+        select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2); }
+        button { padding: 10px 20px; font-size: 15px; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3); display: flex; align-items: center; justify-content: center; }
+        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        button:disabled { background: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-success { background: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); }
+        .btn-success:hover { background: #059669; }
+
+        /* Loading Spinner CSS */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #ffffff;
+            width: 16px;
+            height: 16px;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Modern Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 14px; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid var(--border); text-align: left; }
+        th { background-color: #f8fafc; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; }
+        tr:hover { background-color: #f8fafc; }
+        tr:last-child td { border-bottom: none; }
+
+        /* Typography Alignment Fixes */
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        strong { color: #0f172a; }
+
+        /* Status Badges (Pills) */
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; text-align: center; }
+        .badge-success { background: #dcfce7; color: #166534; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-warning { background: #fef9c3; color: #854d0e; }
+
+        /* Alerts & SQL Code */
+        .alerts { background: #fef2f2; padding: 15px; border-left: 5px solid #ef4444; border-radius: 0 8px 8px 0; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .alerts strong { color: #991b1b; font-size: 1.1rem; }
+        .alerts ul { margin: 10px 0 0 0; color: #7f1d1d; padding-left: 20px; line-height: 1.6; }
+
+        .sql-code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; background: #1e293b; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; display: block; white-space: pre-wrap; max-width: 600px; overflow-x: auto; border: 1px solid #0f172a; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Server Monitor</h2>
-    
-    <div class="controls">
-        <select id="serverSelect">
-            <option value="">-- Select a Server --</option>
-        </select>
-        <button onclick="fetchMetrics()">Refresh Server</button>
+
+    <div class="header-card">
+        <h2>📊 Database Health Monitor</h2>
+        <div class="controls">
+            <select id="serverSelect">
+                <option value="">-- Select a Server --</option>
+            </select>
+            <button id="refreshBtn" onclick="fetchMetrics()">Refresh Dashboard</button>
+        </div>
     </div>
 
     <div id="results" style="display: none;">
+
         <div id="alertBox" class="alerts" style="display: none;">
-            <strong>Server Alerts:</strong>
+            <strong>⚠️ Critical Server Alerts</strong>
             <ul id="serverAlerts"></ul>
         </div>
 
-        <h3>Databases on Server</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Database Name</th>
-                    <th>Status</th>
-                    <th>Size (MB)</th>
-                </tr>
-            </thead>
-            <tbody id="dbTableBody">
-                </tbody>
-        </table>
+        <div id="longQueriesContainer" class="card" style="display: none; border-left: 4px solid #ef4444;">
+            <h3 style="color: #dc2626;">🚨 Active Blocked or Long-Running Queries</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">Session ID</th>
+                        <th style="width: 15%;">Database</th>
+                        <th class="text-right" style="width: 15%;">Time (Secs)</th>
+                        <th style="width: 60%;">Query Text</th>
+                    </tr>
+                </thead>
+                <tbody id="longQueriesBody"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h3>💽 Server Drives</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Drive Letter</th>
+                        <th class="text-right">Free Space (GB)</th>
+                        <th class="text-right">Total Space (GB)</th>
+                        <th class="text-right">Free %</th>
+                    </tr>
+                </thead>
+                <tbody id="driveTableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h3>🗄️ Databases on Server</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Database Name</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-right">Size (MB)</th>
+                        <th class="text-center">Backup (24h)</th>
+                    </tr>
+                </thead>
+                <tbody id="dbTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 30px;">
+        <h3>⚡ Index Fragmentation Scanner</h3>
+        <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">Safely scans for fragmentation > 10% on tables with > 1000 pages.</p>
+        <div class="controls">
+            <select id="dbSelect">
+                <option value="">-- Select a Database --</option>
+            </select>
+            <button id="indexBtn" class="btn-success" onclick="fetchIndexes()">Scan Indexes</button>
+        </div>
+
+        <div id="indexResults" style="display: none; margin-top: 20px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table Name</th>
+                        <th>Index Name</th>
+                        <th class="text-right">Fragmentation %</th>
+                        <th class="text-right">Page Count</th>
+                    </tr>
+                </thead>
+                <tbody id="indexTableBody"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <script>
-    // 1. Load the servers from config.json on page load
+    // 1. Initial Page Load - Fetch and Sort Servers
     document.addEventListener("DOMContentLoaded", () => {
         fetch('/api/databases')
             .then(response => response.json())
             .then(servers => {
+                servers.sort((a, b) => a.localeCompare(b));
                 const select = document.getElementById('serverSelect');
                 servers.forEach(server => {
                     const option = document.createElement('option');
@@ -67,21 +194,35 @@
             });
     });
 
-    // 2. Fetch all databases when user clicks "Refresh"
+    // 2. Fetch Metrics Button
     function fetchMetrics() {
         const selectedServer = document.getElementById('serverSelect').value;
         if (!selectedServer) return alert("Please select a server first.");
 
-        document.getElementById('results').style.display = 'block';
-        const tbody = document.getElementById('dbTableBody');
-        tbody.innerHTML = "<tr><td colspan='3'>Loading data...</td></tr>";
+        // UI Loading State WITH CSS SPINNER!
+        const btn = document.getElementById('refreshBtn');
+        btn.innerHTML = '<span class="spinner"></span> Refreshing...';
+        btn.disabled = true;
 
-        // Call the backend
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('alertBox').style.display = 'none';
+        document.getElementById('longQueriesContainer').style.display = 'none';
+
+        const dbTbody = document.getElementById('dbTableBody');
+        const driveTbody = document.getElementById('driveTableBody');
+        dbTbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Gathering database metrics...</td></tr>";
+        driveTbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Scanning server drives...</td></tr>";
+
         fetch(`/api/metrics?server=${selectedServer}`)
             .then(response => response.json())
             .then(data => {
+                // Restore button state
+                btn.innerHTML = "Refresh Dashboard";
+                btn.disabled = false;
+
                 if (data.error) {
-                    tbody.innerHTML = `<tr><td colspan='3' style="color:red;">Error: ${data.error}</td></tr>`;
+                    dbTbody.innerHTML = `<tr><td colspan='4' style="color:red; text-align:center;">Error: ${data.error}</td></tr>`;
+                    driveTbody.innerHTML = "";
                     return;
                 }
 
@@ -89,7 +230,6 @@
                 const alertBox = document.getElementById('alertBox');
                 const alertList = document.getElementById('serverAlerts');
                 alertList.innerHTML = "";
-                
                 if (data.server_level_alerts && data.server_level_alerts.length > 0 && data.server_level_alerts[0] !== "No active server alerts") {
                     alertBox.style.display = 'block';
                     data.server_level_alerts.forEach(alert => {
@@ -97,28 +237,127 @@
                         li.textContent = alert;
                         alertList.appendChild(li);
                     });
-                } else {
-                    alertBox.style.display = 'none';
                 }
 
-                // Handle Database Table
-                tbody.innerHTML = "";
+                // Handle Long Queries
+                const lqContainer = document.getElementById('longQueriesContainer');
+                const lqTbody = document.getElementById('longQueriesBody');
+                lqTbody.innerHTML = "";
+                if (data.long_queries && data.long_queries.length > 0) {
+                    lqContainer.style.display = 'block';
+                    data.long_queries.forEach(q => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><strong>${q.session_id}</strong></td>
+                            <td>${q.database}</td>
+                            <td class="text-right"><span class="badge badge-danger">${q.seconds.toLocaleString()}s</span></td>
+                            <td><span class="sql-code">${q.query_text}</span></td>
+                        `;
+                        lqTbody.appendChild(tr);
+                    });
+                }
+
+                // Handle Drives
+                driveTbody.innerHTML = "";
+                data.drives.forEach(drive => {
+                    const tr = document.createElement('tr');
+                    let driveBadge = drive.free_percent < 10.0 ? `<span class="badge badge-danger">${drive.free_percent}%</span>` : `<span class="badge badge-success">${drive.free_percent}%</span>`;
+                    tr.innerHTML = `
+                        <td><strong>${drive.letter}</strong></td>
+                        <td class="text-right">${drive.free_gb.toLocaleString(undefined, {minimumFractionDigits: 2})} GB</td>
+                        <td class="text-right">${drive.total_gb.toLocaleString(undefined, {minimumFractionDigits: 2})} GB</td>
+                        <td class="text-right">${driveBadge}</td>
+                    `;
+                    driveTbody.appendChild(tr);
+                });
+
+                // Handle Databases
+                dbTbody.innerHTML = "";
                 data.databases.forEach(db => {
                     const tr = document.createElement('tr');
-                    
-                    // Add a CSS class if status is ONLINE for styling
-                    const statusClass = (db.status.toUpperCase() === 'ONLINE') ? 'status-online' : '';
+
+                    let statusBadge = (db.status.toUpperCase() === 'ONLINE') ? '<span class="badge badge-success">ONLINE</span>' : `<span class="badge badge-danger">${db.status}</span>`;
+
+                    let backupBadge = "";
+                    if (db.backup_status === 'OK') backupBadge = '<span class="badge badge-success">OK</span>';
+                    else if (db.backup_status === 'MISSING') backupBadge = '<span class="badge badge-danger">MISSING</span>';
+                    else backupBadge = `<span class="badge badge-warning">${db.backup_status}</span>`;
 
                     tr.innerHTML = `
                         <td><strong>${db.name}</strong></td>
-                        <td class="${statusClass}">${db.status}</td>
-                        <td>${db.size_mb.toLocaleString()} MB</td>
+                        <td class="text-center">${statusBadge}</td>
+                        <td class="text-right">${db.size_mb.toLocaleString(undefined, {minimumFractionDigits: 2})} MB</td>
+                        <td class="text-center">${backupBadge}</td>
+                    `;
+                    dbTbody.appendChild(tr);
+                });
+
+                // Populate and Sort Index Dropdown
+                const dbSelect = document.getElementById('dbSelect');
+                dbSelect.innerHTML = '<option value="">-- Select a Database --</option>';
+                const sortedDatabases = data.databases.sort((a, b) => a.name.localeCompare(b.name));
+
+                sortedDatabases.forEach(db => {
+                    const option = document.createElement('option');
+                    option.value = db.name;
+                    option.textContent = db.name;
+                    dbSelect.appendChild(option);
+                });
+            })
+            .catch(err => {
+                btn.innerHTML = "Refresh Dashboard";
+                btn.disabled = false;
+                dbTbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Failed to connect to backend.</td></tr>`;
+                console.error(err);
+            });
+    }
+
+    // 3. Fetch Indexes Button
+    function fetchIndexes() {
+        const selectedServer = document.getElementById('serverSelect').value;
+        const selectedDB = document.getElementById('dbSelect').value;
+        if (!selectedServer || !selectedDB) return alert("Please select both a server and a database.");
+
+        // UI Loading State WITH CSS SPINNER!
+        const btn = document.getElementById('indexBtn');
+        btn.innerHTML = '<span class="spinner"></span> Scanning...';
+        btn.disabled = true;
+
+        document.getElementById('indexResults').style.display = 'block';
+        const tbody = document.getElementById('indexTableBody');
+        tbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Scanning indexes (This might take a few seconds on large databases)...</td></tr>";
+
+        fetch(`/api/indexes?server=${selectedServer}&db=${selectedDB}`)
+            .then(response => response.json())
+            .then(data => {
+                btn.innerHTML = "Scan Indexes";
+                btn.disabled = false;
+
+                if (data.error) {
+                    tbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Error: ${data.error}</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = "";
+                if (data.indexes.length === 0) {
+                    tbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #10b981; font-weight: bold;'>✅ No highly fragmented large indexes found! System is healthy.</td></tr>";
+                    return;
+                }
+                data.indexes.forEach(idx => {
+                    const tr = document.createElement('tr');
+                    let fragBadge = idx.fragmentation > 30 ? `<span class="badge badge-danger">${idx.fragmentation}%</span>` : `<span class="badge badge-warning">${idx.fragmentation}%</span>`;
+                    tr.innerHTML = `
+                        <td><strong>${idx.table}</strong></td>
+                        <td>${idx.index}</td>
+                        <td class="text-right">${fragBadge}</td>
+                        <td class="text-right">${idx.pages.toLocaleString()}</td>
                     `;
                     tbody.appendChild(tr);
                 });
             })
             .catch(err => {
-                tbody.innerHTML = `<tr><td colspan='3' style="color:red;">Failed to connect to backend.</td></tr>`;
+                btn.innerHTML = "Scan Indexes";
+                btn.disabled = false;
+                tbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Failed to connect.</td></tr>`;
                 console.error(err);
             });
     }
