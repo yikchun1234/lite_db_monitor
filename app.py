@@ -45,60 +45,59 @@ if __name__ == '__main__':
 
 @app.route('/api/metrics', methods=['GET'])
 def get_metrics():
-    db_name = request.args.get('db')
-    if db_name not in db_configs:
-        return jsonify({"error": "Database not found"}), 404
-
-    config = db_configs[db_name]
+    server_name = request.args.get('server')
     
-    # Check if the requested database is MSSQL
+    # Read the config live
+    with open('config.json') as config_file:
+        live_configs = json.load(config_file)
+
+    if server_name not in live_configs:
+        return jsonify({"error": "Server not found"}), 404
+
+    config = live_configs[server_name]
+    
     if config['type'] == 'sqlserver':
         try:
-            # 1. Build the connection string
+            # 1. Connect to the 'master' database to view all databases
             conn_str = (
                 f"DRIVER={{ODBC Driver 17 for SQL Server}};"
                 f"SERVER={config['host']};"
-                f"DATABASE={config['database']};"
+                f"DATABASE=master;" # Always connect to master
                 f"UID={config['user']};"
                 f"PWD={config['password']}"
             )
-            
-            # Connect to the database
-            conn = pyodbc.connect(conn_str, timeout=5) # 5 second timeout so it doesn't hang
+            conn = pyodbc.connect(conn_str, timeout=5)
             cursor = conn.cursor()
 
-            # 2. Get Database Status (Lightning fast)
-            cursor.execute("SELECT state_desc FROM sys.databases WHERE name = DB_NAME();")
-            status = cursor.fetchone()[0]
-
-            # 3. Get Datafile Size in MB (Queries metadata, very fast)
-            cursor.execute("SELECT SUM(size * 8.0 / 1024) FROM sys.master_files WHERE database_id = DB_ID();")
-            size_mb = round(cursor.fetchone()[0], 2)
-
-            # 4. Get Active Alerts: Long running queries (Over 30 seconds)
-            # Uses NOLOCK to ensure zero interference with production
-            alert_query = """
-                SELECT session_id, total_elapsed_time / 1000 AS seconds_running 
-                FROM sys.dm_exec_requests WITH (NOLOCK)
-                WHERE total_elapsed_time > 30000 AND session_id <> @@SPID;
+            # 2. Query to get ALL databases, their status, and their sizes at once!
+            # The 'WHERE d.database_id > 4' hides the system databases (master, tempdb, etc.)
+            db_query = """
+                SELECT 
+                    d.name AS DatabaseName, 
+                    d.state_desc AS Status, 
+                    ISNULL(SUM(mf.size * 8.0 / 1024), 0) AS Size_in_MB
+                FROM sys.databases d
+                LEFT JOIN sys.master_files mf ON d.database_id = mf.database_id
+                WHERE d.database_id > 4 
+                GROUP BY d.name, d.state_desc;
             """
-            cursor.execute(alert_query)
-            long_queries = cursor.fetchall()
-            alerts = []
-            if long_queries:
-                for row in long_queries:
-                    alerts.append(f"Warning: Session {row.session_id} has been running for {row.seconds_running} seconds.")
-            else:
-                alerts.append("No long-running queries detected.")
+            cursor.execute(db_query)
+            
+            # 3. Format the results
+            all_databases = []
+            for row in cursor.fetchall():
+                all_databases.append({
+                    "name": row.DatabaseName,
+                    "status": row.Status,
+                    "size_mb": round(row.Size_in_MB, 2)
+                })
 
             conn.close()
 
-            # Return the real data to your HTML frontend
+            # Return the list of all databases to the frontend
             return jsonify({
-                "status": status,
-                "datafile_size": f"{size_mb} MB",
-                "index_details": "Index check skipped for performance (Requires heavy scan).",
-                "alerts": alerts
+                "server_level_alerts": ["No active server alerts"],
+                "databases": all_databases
             })
 
         except Exception as e:
