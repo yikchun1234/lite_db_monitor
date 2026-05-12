@@ -31,18 +31,27 @@ def get_metrics():
     
     if config['type'] == 'sqlserver':
         try:
-	# 1. Connect to the 'master' database to view all databases
+            # Safely format the server address (ODBC strictly requires a COMMA for ports, not a colon)
+            server_address = config['host'].replace(':', ',')
+            
+            # If you defined a port in config.json, append it correctly
+            if 'port' in config and ',' not in server_address:
+                server_address = f"{server_address},{config['port']}"
+
+            # 1. Connect to the 'master' database to view all databases
             conn_str = (
                 f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-                f"SERVER={config['host']};"
+                f"SERVER={server_address};"
                 f"DATABASE=master;"
                 f"UID={config['user']};"
-                f"PWD={{{config['password']}}};"  # <-- Wraps password in {} to protect special characters
-                f"TrustServerCertificate=yes;"    # <-- Forces ODBC to trust the IP connection
+                f"PWD={config['password']};"
+                f"Encrypt=yes;"
+                f"TrustServerCertificate=yes;"
             )
+            
             conn = pyodbc.connect(conn_str, timeout=5)
             cursor = conn.cursor()
-
+            
             # 2. Query to get ALL databases, their status, and their sizes at once!
             # The 'WHERE d.database_id > 4' hides the system databases (master, tempdb, etc.)
             db_query = """
