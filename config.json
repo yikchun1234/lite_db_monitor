@@ -1,17 +1,15 @@
 {
-  "Production_DB_1": {
+  "Production_Server_1": {
     "type": "postgres",
     "host": "192.168.1.10",
     "port": 5432,
     "user": "monitor_user",
-    "password": "secure_password",
-    "database": "prod_db"
+    "password": "secure_password"
   },
-  "Reporting_DB_2": {
+  "Testing_Server": {
     "type": "sqlserver",
-    "host": "192.168.1.11",
-    "user": "monitor_user",
-    "password": "secure_password",
-    "database": "report_db"
+    "host": "YOUR_TEST_SERVER_IP",
+    "user": "your_test_user",
+    "password": "your_test_password"
   }
 }
