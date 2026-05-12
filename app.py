@@ -6,21 +6,18 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template('index.html') # Serves your HTML page
+    return render_template('index.html') 
 
 @app.route('/api/databases', methods=['GET'])
 def get_databases():
-    # Read the config live every time the page loads
     with open('config.json') as config_file:
         live_configs = json.load(config_file)
-    # Returns just the server names for the dropdown
     return jsonify(list(live_configs.keys()))
 
 @app.route('/api/metrics', methods=['GET'])
 def get_metrics():
     server_name = request.args.get('server')
     
-    # Read the config live
     with open('config.json') as config_file:
         live_configs = json.load(config_file)
 
@@ -31,29 +28,33 @@ def get_metrics():
     
     if config['type'] == 'sqlserver':
         try:
-            # Safely format the server address (ODBC strictly requires a COMMA for ports, not a colon)
-            server_address = config['host'].replace(':', ',')
+	    # Safely format the server address
+            server_address = config['host'].replace(':', ',').strip(',')
             
-            # If you defined a port in config.json, append it correctly
-            if 'port' in config and ',' not in server_address:
+            # Only append the port if it actually has a value!
+            if config.get('port') and str(config['port']).strip() != '' and ',' not in server_address:
                 server_address = f"{server_address},{config['port']}"
-
-            # 1. Connect to the 'master' database to view all databases
+                
+            # --- THE FIX IS HERE ---
             conn_str = (
                 f"DRIVER={{ODBC Driver 17 for SQL Server}};"
                 f"SERVER={server_address};"
                 f"DATABASE=master;"
                 f"UID={config['user']};"
-                f"PWD={config['password']};"
+                f"PWD={{{config['password']}}};"  # <-- The triple brackets protect passwords with special characters!
                 f"Encrypt=yes;"
                 f"TrustServerCertificate=yes;"
             )
             
+            # --- DEBUGGING TOOL ---
+            safe_conn_str = conn_str.replace(config['password'], '********')
+            print(f"\n--- DEBUG: ATTEMPTING CONNECTION ---")
+            print(safe_conn_str)
+            print(f"------------------------------------\n")
+
             conn = pyodbc.connect(conn_str, timeout=5)
             cursor = conn.cursor()
-            
-            # 2. Query to get ALL databases, their status, and their sizes at once!
-            # The 'WHERE d.database_id > 4' hides the system databases (master, tempdb, etc.)
+
             db_query = """
                 SELECT 
                     d.name AS DatabaseName, 
@@ -66,7 +67,6 @@ def get_metrics():
             """
             cursor.execute(db_query)
             
-            # 3. Format the results
             all_databases = []
             for row in cursor.fetchall():
                 all_databases.append({
@@ -77,7 +77,6 @@ def get_metrics():
 
             conn.close()
 
-            # Return the list of all databases to the frontend
             return jsonify({
                 "server_level_alerts": ["No active server alerts"],
                 "databases": all_databases
@@ -89,5 +88,4 @@ def get_metrics():
     return jsonify({"error": "Unsupported database type"})
 
 if __name__ == '__main__':
-    # Runs a lightweight local server (must be at the very bottom!)
     app.run(host='0.0.0.0', port=5000)
