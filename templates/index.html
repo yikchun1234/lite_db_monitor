@@ -32,6 +32,8 @@
         button:disabled { background: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-success { background: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); }
         .btn-success:hover { background: #059669; }
+        .btn-indigo { background: #6366f1; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3); }
+        .btn-indigo:hover { background: #4f46e5; }
 
         /* Loading Spinner CSS */
         .spinner { border: 3px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top: 3px solid #ffffff; width: 16px; height: 16px; animation: spin 0.8s linear infinite; display: inline-block; margin-right: 8px; }
@@ -53,12 +55,18 @@
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-warning { background: #fef9c3; color: #854d0e; }
         .badge-neutral { background: #f1f5f9; color: #475569; }
+        .badge-indigo { background: #e0e7ff; color: #3730a3; }
 
         /* Alerts & SQL Code */
         .alerts { background: #fef2f2; padding: 15px; border-left: 5px solid #ef4444; border-radius: 0 8px 8px 0; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .alerts strong { color: #991b1b; font-size: 1.1rem; }
         .alerts ul { margin: 10px 0 0 0; color: #7f1d1d; padding-left: 20px; line-height: 1.6; }
+        .alerts-healthy { background: #f0fdf4; border-left-color: #22c55e; }
+        .alerts-healthy strong { color: #15803d; }
+        .alerts-healthy ul { color: #166534; }
+
         .sql-code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; background: #1e293b; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; display: block; white-space: pre-wrap; max-width: 600px; overflow-x: auto; border: 1px solid #0f172a; }
+        .error-code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; color: #991b1b; background: #fee2e2; padding: 8px; border-radius: 4px; display: block; white-space: pre-wrap; }
 
         /* Progress Bar Container */
         .progress-bar-container { background: #e2e8f0; border-radius: 12px; width: 100px; height: 20px; position: relative; margin: 0 auto; overflow: hidden; }
@@ -71,7 +79,7 @@
 <div class="container">
 
     <div class="header-card">
-        <h2>📊 Database Health Monitor</h2>
+        <h2>📊 Database Administration Portal</h2>
         <div class="controls">
             <select id="serverSelect">
                 <option value="">-- Select a Server --</option>
@@ -83,8 +91,38 @@
     <div id="results" style="display: none;">
 
         <div id="alertBox" class="alerts" style="display: none;">
-            <strong>⚠️ Critical Server Alerts</strong>
+            <strong id="alertTitle">⚠️ Critical Server Alerts</strong>
             <ul id="serverAlerts"></ul>
+        </div>
+
+        <div style="display: flex; gap: 25px; flex-wrap: wrap;">
+            <div id="sysadminContainer" class="card" style="flex: 1; min-width: 300px; border-left: 4px solid #8b5cf6;">
+                <h3 style="color: #6d28d9;">🛡️ Sysadmin Accounts (Server Admins)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Login Name</th>
+                            <th>Type</th>
+                            <th class="text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sysadminBody"></tbody>
+                </table>
+            </div>
+
+            <div id="restoreContainer" class="card" style="flex: 1; min-width: 300px; border-left: 4px solid #14b8a6;">
+                <h3 style="color: #0f766e;">⏪ Database Restores (Last 7 Days)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Database Name</th>
+                            <th>Restored By</th>
+                            <th class="text-right">Restore Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="restoreBody"></tbody>
+                </table>
+            </div>
         </div>
 
         <div id="longQueriesContainer" class="card" style="display: none; border-left: 4px solid #ef4444;">
@@ -99,6 +137,20 @@
                     </tr>
                 </thead>
                 <tbody id="longQueriesBody"></tbody>
+            </table>
+        </div>
+
+        <div id="failedJobsContainer" class="card" style="display: none; border-left: 4px solid #f97316;">
+            <h3 style="color: #ea580c;">❌ Failed SQL Agent Jobs (Last 24 Hours)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">Job Name</th>
+                        <th style="width: 15%;">Failed At</th>
+                        <th style="width: 65%;">Error Message</th>
+                    </tr>
+                </thead>
+                <tbody id="failedJobsBody"></tbody>
             </table>
         </div>
 
@@ -142,6 +194,7 @@
                         <th class="text-center">Status</th>
                         <th class="text-right">Size (MB)</th>
                         <th class="text-center">Backup (24h)</th>
+                        <th class="text-center">Auto-Shrink</th>
                         <th class="text-center">Log Usage</th>
                         <th class="text-center">Log Wait Reason</th>
                     </tr>
@@ -151,28 +204,44 @@
         </div>
     </div>
 
-    <div class="card" style="margin-top: 30px;">
-        <h3>⚡ Index Fragmentation Scanner</h3>
-        <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">Safely scans for fragmentation > 10% on tables with > 1000 pages.</p>
-        <div class="controls">
-            <select id="dbSelect">
-                <option value="">-- Select a Database --</option>
-            </select>
-            <button id="indexBtn" class="btn-success" onclick="fetchIndexes()">Scan Indexes</button>
+    <div style="display: flex; gap: 25px; flex-wrap: wrap;">
+
+        <div class="card" style="flex: 1; min-width: 400px; margin-top: 20px;">
+            <h3>⚡ Index Fragmentation Scanner</h3>
+            <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">Safely scans for fragmentation > 10% on tables with > 1000 pages.</p>
+            <div class="controls">
+                <select id="dbIndexSelect"><option value="">-- Select a Database --</option></select>
+                <button id="indexBtn" class="btn-success" onclick="fetchIndexes()">Scan Indexes</button>
+            </div>
+            <div id="indexResults" style="display: none; margin-top: 20px;">
+                <table>
+                    <thead>
+                        <tr><th>Table Name</th><th>Index Name</th><th class="text-right">Fragmentation %</th><th class="text-right">Page Count</th></tr>
+                    </thead>
+                    <tbody id="indexTableBody"></tbody>
+                </table>
+            </div>
         </div>
 
-        <div id="indexResults" style="display: none; margin-top: 20px;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Table Name</th>
-                        <th>Index Name</th>
-                        <th class="text-right">Fragmentation %</th>
-                        <th class="text-right">Page Count</th>
-                    </tr>
-                </thead>
-                <tbody id="indexTableBody"></tbody>
-            </table>
+        <div class="card" style="flex: 1; min-width: 400px; margin-top: 20px;">
+            <h3>🔐 Post-Restore Security Validator</h3>
+            <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">Identify broken (orphaned) users and review all db_owner admins.</p>
+            <div class="controls">
+                <select id="dbSecuritySelect"><option value="">-- Select a Database --</option></select>
+                <button id="securityBtn" class="btn-indigo" onclick="fetchSecurity()">Validate Security</button>
+            </div>
+            <div id="securityResults" style="display: none; margin-top: 20px;">
+                <h4 style="color: #dc2626; margin-bottom: 5px;">Orphaned Users (Broken Access)</h4>
+                <table style="margin-bottom: 20px;">
+                    <thead><tr><th>User Name</th><th>Account Type</th></tr></thead>
+                    <tbody id="orphanedTableBody"></tbody>
+                </table>
+                <h4 style="color: #0ea5e9; margin-bottom: 5px;">Database Owners (Full Admin Access)</h4>
+                <table>
+                    <thead><tr><th>User Name</th><th>Account Type</th></tr></thead>
+                    <tbody id="ownerTableBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -204,11 +273,12 @@
         document.getElementById('results').style.display = 'block';
         document.getElementById('alertBox').style.display = 'none';
         document.getElementById('longQueriesContainer').style.display = 'none';
+        document.getElementById('failedJobsContainer').style.display = 'none';
         document.getElementById('agContainer').style.display = 'none';
 
         const dbTbody = document.getElementById('dbTableBody');
         const driveTbody = document.getElementById('driveTableBody');
-        dbTbody.innerHTML = "<tr><td colspan='6' class='text-center' style='padding: 30px; color: #64748b;'>Gathering database metrics...</td></tr>";
+        dbTbody.innerHTML = "<tr><td colspan='7' class='text-center' style='padding: 30px; color: #64748b;'>Gathering database metrics...</td></tr>";
         driveTbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Scanning server drives...</td></tr>";
 
         fetch(`/api/metrics?server=${selectedServer}`)
@@ -218,185 +288,191 @@
                 btn.disabled = false;
 
                 if (data.error) {
-                    dbTbody.innerHTML = `<tr><td colspan='6' style="color:red; text-align:center;">Error: ${data.error}</td></tr>`;
+                    dbTbody.innerHTML = `<tr><td colspan='7' style="color:red; text-align:center;">Error: ${data.error}</td></tr>`;
                     driveTbody.innerHTML = "";
                     return;
                 }
 
                 // 1. Alerts
                 const alertBox = document.getElementById('alertBox');
+                const alertTitle = document.getElementById('alertTitle');
                 const alertList = document.getElementById('serverAlerts');
                 alertList.innerHTML = "";
-                if (data.server_level_alerts && data.server_level_alerts.length > 0 && data.server_level_alerts[0] !== "No active server alerts") {
+                if (data.server_level_alerts && data.server_level_alerts.length > 0) {
                     alertBox.style.display = 'block';
+                    if (data.server_level_alerts[0].includes("System is entirely healthy")) {
+                        alertBox.className = "alerts alerts-healthy"; alertTitle.innerHTML = "✅ Server Health Status";
+                    } else {
+                        alertBox.className = "alerts"; alertTitle.innerHTML = "⚠️ Critical Server Alerts";
+                    }
                     data.server_level_alerts.forEach(alert => {
-                        let li = document.createElement('li');
-                        li.textContent = alert;
-                        alertList.appendChild(li);
+                        let li = document.createElement('li'); li.textContent = alert; alertList.appendChild(li);
                     });
                 }
 
-                // 2. Long & Sleeping Queries
+                // 2. Sysadmin Audit (NEW)
+                const sysadminBody = document.getElementById('sysadminBody');
+                sysadminBody.innerHTML = "";
+                if (data.sysadmins && data.sysadmins.length > 0) {
+                    data.sysadmins.forEach(sa => {
+                        const statusBadge = sa.is_disabled ? '<span class="badge badge-neutral">Disabled</span>' : '<span class="badge badge-success">Active</span>';
+                        sysadminBody.innerHTML += `<tr><td><strong>${sa.login_name}</strong></td><td><span class="badge badge-indigo">${sa.login_type}</span></td><td class="text-center">${statusBadge}</td></tr>`;
+                    });
+                } else {
+                    sysadminBody.innerHTML = `<tr><td colspan='3' class="text-center" style="color: #64748b;">No active sysadmins found.</td></tr>`;
+                }
+
+                // 3. Recent Restores Tracker (NEW)
+                const restoreBody = document.getElementById('restoreBody');
+                restoreBody.innerHTML = "";
+                if (data.recent_restores && data.recent_restores.length > 0) {
+                    data.recent_restores.forEach(rr => {
+                        restoreBody.innerHTML += `<tr><td><strong>${rr.database}</strong></td><td>${rr.restored_by}</td><td class="text-right">${rr.restore_date}</td></tr>`;
+                    });
+                } else {
+                    restoreBody.innerHTML = `<tr><td colspan='3' class="text-center" style="color: #64748b;">No databases restored in the last 7 days.</td></tr>`;
+                }
+
+                // 4. Long & Sleeping Queries
                 const lqContainer = document.getElementById('longQueriesContainer');
                 const lqTbody = document.getElementById('longQueriesBody');
                 lqTbody.innerHTML = "";
                 if (data.long_queries && data.long_queries.length > 0) {
                     lqContainer.style.display = 'block';
                     data.long_queries.forEach(q => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td><strong>${q.session_id}</strong></td>
-                            <td>${q.database}</td>
-                            <td class="text-right"><span class="badge badge-danger">${q.seconds.toLocaleString()}s</span></td>
-                            <td><span class="sql-code">${q.query_text}</span></td>
-                        `;
-                        lqTbody.appendChild(tr);
+                        lqTbody.innerHTML += `<tr><td><strong>${q.session_id}</strong></td><td>${q.database}</td><td class="text-right"><span class="badge badge-danger">${q.seconds.toLocaleString()}s</span></td><td><span class="sql-code">${q.query_text}</span></td></tr>`;
                     });
                 }
 
-                // 3. AG Sync Health
+                // 5. Failed Agent Jobs
+                const fjContainer = document.getElementById('failedJobsContainer');
+                const fjTbody = document.getElementById('failedJobsBody');
+                fjTbody.innerHTML = "";
+                if (data.failed_jobs && data.failed_jobs.length > 0) {
+                    fjContainer.style.display = 'block';
+                    data.failed_jobs.forEach(job => {
+                        fjTbody.innerHTML += `<tr><td><strong>${job.job_name}</strong></td><td>${job.fail_date}</td><td><span class="error-code">${job.error_message}</span></td></tr>`;
+                    });
+                }
+
+                // 6. AG Sync Health
                 const agContainer = document.getElementById('agContainer');
                 const agTbody = document.getElementById('agTableBody');
                 agTbody.innerHTML = "";
                 if (data.ag_sync && data.ag_sync.length > 0) {
                     agContainer.style.display = 'block';
                     data.ag_sync.forEach(ag => {
-                        const tr = document.createElement('tr');
-                        let stateBadge = ag.state === 'HEALTHY' || ag.state === 'SYNCHRONIZED' || ag.state === 'SYNCHRONIZING'
-                                         ? `<span class="badge badge-success">${ag.state}</span>` : `<span class="badge badge-danger">${ag.state}</span>`;
+                        let stateBadge = ag.state === 'HEALTHY' || ag.state === 'SYNCHRONIZED' || ag.state === 'SYNCHRONIZING' ? `<span class="badge badge-success">${ag.state}</span>` : `<span class="badge badge-danger">${ag.state}</span>`;
                         let logBadge = ag.log_queue_mb > 100 ? `<span class="badge badge-danger">${ag.log_queue_mb} MB</span>` : `<span style="color: #10b981; font-weight: bold;">${ag.log_queue_mb} MB</span>`;
                         let redoBadge = ag.redo_queue_mb > 100 ? `<span class="badge badge-danger">${ag.redo_queue_mb} MB</span>` : `<span style="color: #10b981; font-weight: bold;">${ag.redo_queue_mb} MB</span>`;
-
-                        tr.innerHTML = `
-                            <td><strong>${ag.database}</strong></td>
-                            <td>${ag.secondary}</td>
-                            <td class="text-center">${stateBadge}</td>
-                            <td class="text-right">${logBadge}</td>
-                            <td class="text-right">${redoBadge}</td>
-                        `;
-                        agTbody.appendChild(tr);
+                        agTbody.innerHTML += `<tr><td><strong>${ag.database}</strong></td><td>${ag.secondary}</td><td class="text-center">${stateBadge}</td><td class="text-right">${logBadge}</td><td class="text-right">${redoBadge}</td></tr>`;
                     });
                 }
 
-                // 4. Drives
+                // 7. Drives
                 driveTbody.innerHTML = "";
                 data.drives.forEach(drive => {
-                    const tr = document.createElement('tr');
                     let driveBadge = drive.free_percent < 10.0 ? `<span class="badge badge-danger">${drive.free_percent}%</span>` : `<span class="badge badge-success">${drive.free_percent}%</span>`;
-                    tr.innerHTML = `
-                        <td><strong>${drive.letter}</strong></td>
-                        <td class="text-right">${drive.free_gb.toLocaleString(undefined, {minimumFractionDigits: 2})} GB</td>
-                        <td class="text-right">${drive.total_gb.toLocaleString(undefined, {minimumFractionDigits: 2})} GB</td>
-                        <td class="text-right">${driveBadge}</td>
-                    `;
-                    driveTbody.appendChild(tr);
+                    driveTbody.innerHTML += `<tr><td><strong>${drive.letter}</strong></td><td class="text-right">${drive.free_gb.toLocaleString(undefined, {minimumFractionDigits: 2})} GB</td><td class="text-right">${drive.total_gb.toLocaleString(undefined, {minimumFractionDigits: 2})} GB</td><td class="text-right">${driveBadge}</td></tr>`;
                 });
 
-                // 5. Databases
+                // 8. Databases
                 dbTbody.innerHTML = "";
                 data.databases.forEach(db => {
-                    const tr = document.createElement('tr');
-
                     let statusBadge = (db.status.toUpperCase() === 'ONLINE') ? '<span class="badge badge-success">ONLINE</span>' : `<span class="badge badge-danger">${db.status}</span>`;
-
-                    let backupBadge = "";
-                    if (db.backup_status === 'OK') backupBadge = '<span class="badge badge-success">OK</span>';
-                    else if (db.backup_status === 'MISSING') backupBadge = '<span class="badge badge-danger">MISSING</span>';
-                    else backupBadge = `<span class="badge badge-warning">${db.backup_status}</span>`;
-
-                    let logWaitBadge = "";
-                    if (db.log_wait === 'NOTHING') logWaitBadge = '<span class="badge badge-neutral">NOTHING</span>';
-                    else if (db.log_wait === 'LOG_BACKUP') logWaitBadge = '<span class="badge badge-warning">LOG_BACKUP</span>';
-                    else if (db.log_wait === 'AVAILABILITY_REPLICA') logWaitBadge = '<span class="badge badge-danger">AG_REPLICA</span>';
-                    else logWaitBadge = `<span class="badge badge-warning">${db.log_wait}</span>`;
-
-                    // --- NEW CALM PROGRESS BAR FOR LOGS ---
+                    let backupBadge = db.backup_status === 'OK' ? '<span class="badge badge-success">OK</span>' : (db.backup_status === 'MISSING' ? '<span class="badge badge-danger">MISSING</span>' : `<span class="badge badge-warning">${db.backup_status}</span>`);
+                    let autoShrinkBadge = db.auto_shrink ? '<span class="badge badge-warning">ON</span>' : '<span class="badge badge-neutral">OFF</span>';
+                    let logWaitBadge = db.log_wait === 'NOTHING' ? '<span class="badge badge-neutral">NOTHING</span>' : (db.log_wait === 'LOG_BACKUP' ? '<span class="badge badge-warning">LOG_BACKUP</span>' : (db.log_wait === 'AVAILABILITY_REPLICA' ? '<span class="badge badge-danger">AG_REPLICA</span>' : `<span class="badge badge-warning">${db.log_wait}</span>`));
                     let logPct = db.log_used_pct || 0;
-                    let barColor = logPct > 85 ? '#ef4444' : (logPct > 50 ? '#f59e0b' : '#10b981'); // Red (>85), Yellow (>50), Green
-                    let textColor = logPct > 50 ? '#ffffff' : '#334155'; // White text on filled part, dark text on empty part
+                    let barColor = logPct > 85 ? '#ef4444' : (logPct > 50 ? '#f59e0b' : '#10b981');
+                    let textColor = logPct > 50 ? '#ffffff' : '#334155';
 
-                    let logBarHtml = `
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-fill" style="background: ${barColor}; width: ${logPct}%;"></div>
-                            <div class="progress-bar-text" style="color: ${textColor};">${logPct}%</div>
-                        </div>
-                    `;
+                    let logBarHtml = `<div class="progress-bar-container"><div class="progress-bar-fill" style="background: ${barColor}; width: ${logPct}%;"></div><div class="progress-bar-text" style="color: ${textColor};">${logPct}%</div></div>`;
 
-                    tr.innerHTML = `
-                        <td><strong>${db.name}</strong></td>
-                        <td class="text-center">${statusBadge}</td>
-                        <td class="text-right">${db.size_mb.toLocaleString(undefined, {minimumFractionDigits: 2})} MB</td>
-                        <td class="text-center">${backupBadge}</td>
-                        <td class="text-center">${logBarHtml}</td>
-                        <td class="text-center">${logWaitBadge}</td>
-                    `;
-                    dbTbody.appendChild(tr);
+                    dbTbody.innerHTML += `<tr><td><strong>${db.name}</strong></td><td class="text-center">${statusBadge}</td><td class="text-right">${db.size_mb.toLocaleString(undefined, {minimumFractionDigits: 2})} MB</td><td class="text-center">${backupBadge}</td><td class="text-center">${autoShrinkBadge}</td><td class="text-center">${logBarHtml}</td><td class="text-center">${logWaitBadge}</td></tr>`;
                 });
 
-                const dbSelect = document.getElementById('dbSelect');
-                dbSelect.innerHTML = '<option value="">-- Select a Database --</option>';
+                // Populate Dropdowns
+                const dbIndexSelect = document.getElementById('dbIndexSelect');
+                const dbSecuritySelect = document.getElementById('dbSecuritySelect');
+                dbIndexSelect.innerHTML = '<option value="">-- Select a Database --</option>';
+                dbSecuritySelect.innerHTML = '<option value="">-- Select a Database --</option>';
+
                 const sortedDatabases = data.databases.sort((a, b) => a.name.localeCompare(b.name));
                 sortedDatabases.forEach(db => {
-                    const option = document.createElement('option');
-                    option.value = db.name;
-                    option.textContent = db.name;
-                    dbSelect.appendChild(option);
+                    dbIndexSelect.innerHTML += `<option value="${db.name}">${db.name}</option>`;
+                    dbSecuritySelect.innerHTML += `<option value="${db.name}">${db.name}</option>`;
                 });
             })
             .catch(err => {
-                btn.innerHTML = "Refresh Dashboard";
-                btn.disabled = false;
-                dbTbody.innerHTML = `<tr><td colspan='6' class="text-center" style="color:red;">Failed to connect to backend.</td></tr>`;
+                btn.innerHTML = "Refresh Dashboard"; btn.disabled = false;
+                dbTbody.innerHTML = `<tr><td colspan='7' class="text-center" style="color:red;">Failed to connect to backend.</td></tr>`;
                 console.error(err);
             });
     }
 
     function fetchIndexes() {
         const selectedServer = document.getElementById('serverSelect').value;
-        const selectedDB = document.getElementById('dbSelect').value;
+        const selectedDB = document.getElementById('dbIndexSelect').value;
         if (!selectedServer || !selectedDB) return alert("Please select both a server and a database.");
 
         const btn = document.getElementById('indexBtn');
-        btn.innerHTML = '<span class="spinner"></span> Scanning...';
-        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Scanning...'; btn.disabled = true;
 
         document.getElementById('indexResults').style.display = 'block';
         const tbody = document.getElementById('indexTableBody');
-        tbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Scanning indexes (This might take a few seconds on large databases)...</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Scanning indexes (This might take a few seconds)...</td></tr>";
 
         fetch(`/api/indexes?server=${selectedServer}&db=${selectedDB}`)
-            .then(response => response.json())
-            .then(data => {
-                btn.innerHTML = "Scan Indexes";
-                btn.disabled = false;
-
-                if (data.error) {
-                    tbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Error: ${data.error}</td></tr>`;
-                    return;
-                }
+            .then(r => r.json()).then(data => {
+                btn.innerHTML = "Scan Indexes"; btn.disabled = false;
+                if (data.error) { tbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Error: ${data.error}</td></tr>`; return; }
                 tbody.innerHTML = "";
-                if (data.indexes.length === 0) {
-                    tbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #10b981; font-weight: bold;'>✅ No highly fragmented large indexes found! System is healthy.</td></tr>";
-                    return;
-                }
+                if (data.indexes.length === 0) { tbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #10b981; font-weight: bold;'>✅ No highly fragmented large indexes found! System is healthy.</td></tr>"; return; }
                 data.indexes.forEach(idx => {
-                    const tr = document.createElement('tr');
                     let fragBadge = idx.fragmentation > 30 ? `<span class="badge badge-danger">${idx.fragmentation}%</span>` : `<span class="badge badge-warning">${idx.fragmentation}%</span>`;
-                    tr.innerHTML = `
-                        <td><strong>${idx.table}</strong></td>
-                        <td>${idx.index}</td>
-                        <td class="text-right">${fragBadge}</td>
-                        <td class="text-right">${idx.pages.toLocaleString()}</td>
-                    `;
-                    tbody.appendChild(tr);
+                    tbody.innerHTML += `<tr><td><strong>${idx.table}</strong></td><td>${idx.index}</td><td class="text-right">${fragBadge}</td><td class="text-right">${idx.pages.toLocaleString()}</td></tr>`;
                 });
-            })
-            .catch(err => {
-                btn.innerHTML = "Scan Indexes";
-                btn.disabled = false;
-                tbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Failed to connect.</td></tr>`;
-                console.error(err);
-            });
+            }).catch(e => { btn.innerHTML = "Scan Indexes"; btn.disabled = false; tbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Failed to connect.</td></tr>`; });
+    }
+
+    // NEW: Security Validator JS
+    function fetchSecurity() {
+        const selectedServer = document.getElementById('serverSelect').value;
+        const selectedDB = document.getElementById('dbSecuritySelect').value;
+        if (!selectedServer || !selectedDB) return alert("Please select both a server and a database.");
+
+        const btn = document.getElementById('securityBtn');
+        btn.innerHTML = '<span class="spinner"></span> Validating...'; btn.disabled = true;
+
+        document.getElementById('securityResults').style.display = 'block';
+        const oTbody = document.getElementById('orphanedTableBody');
+        const owTbody = document.getElementById('ownerTableBody');
+        oTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 10px; color: #64748b;'>Scanning users...</td></tr>";
+        owTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 10px; color: #64748b;'>Loading db_owners...</td></tr>";
+
+        fetch(`/api/security?server=${selectedServer}&db=${selectedDB}`)
+            .then(r => r.json()).then(data => {
+                btn.innerHTML = "Validate Security"; btn.disabled = false;
+                if (data.error) {
+                    oTbody.innerHTML = `<tr><td colspan='2' class="text-center" style="color:red;">Error: ${data.error}</td></tr>`;
+                    owTbody.innerHTML = ""; return;
+                }
+
+                oTbody.innerHTML = "";
+                if (data.orphaned.length === 0) {
+                    oTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 15px; color: #10b981; font-weight: bold;'>✅ No orphaned users found. Access is secure!</td></tr>";
+                } else {
+                    data.orphaned.forEach(u => oTbody.innerHTML += `<tr><td><strong>${u.user}</strong> <span class="badge badge-danger">ORPHANED</span></td><td>${u.type}</td></tr>`);
+                }
+
+                owTbody.innerHTML = "";
+                if (data.owners.length === 0) {
+                    owTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 15px; color: #64748b;'>No additional db_owners found.</td></tr>";
+                } else {
+                    data.owners.forEach(u => owTbody.innerHTML += `<tr><td><strong>${u.user}</strong></td><td><span class="badge badge-indigo">${u.type}</span></td></tr>`);
+                }
+            }).catch(e => { btn.innerHTML = "Validate Security"; btn.disabled = false; oTbody.innerHTML = `<tr><td colspan='2' class="text-center" style="color:red;">Failed to connect.</td></tr>`; });
     }
 </script>
 
