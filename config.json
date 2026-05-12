@@ -10,6 +10,7 @@
     "type": "sqlserver",
     "host": "YOUR_TEST_SERVER_IP",
     "user": "your_test_user",
+    "port": 1433,
     "password": "your_test_password"
   }
 }
