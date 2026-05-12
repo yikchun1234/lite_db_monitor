@@ -14,21 +14,12 @@
         .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); margin-bottom: 25px; border: 1px solid var(--border); }
         .card h3 { margin-top: 0; color: #0f172a; font-size: 1.1rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; margin-bottom: 15px; }
 
-        /* THE FIX: Sticky Header Card */
+        /* Sticky Header Card */
         .header-card {
-            background: rgba(255, 255, 255, 0.95); /* Slightly transparent */
-            backdrop-filter: blur(10px); /* Apple-style blur effect */
-            border-radius: 12px;
-            padding: 20px 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* Slightly stronger shadow so it pops */
-            margin-bottom: 25px;
-            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 12px; padding: 20px 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 25px; border: 1px solid var(--border);
             display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
-
-            /* These 3 lines lock it to the top! */
-            position: sticky;
-            top: 15px;
-            z-index: 1000;
+            position: sticky; top: 15px; z-index: 1000;
         }
         .header-card h2 { margin: 0; color: #0f172a; font-size: 1.6rem; }
 
@@ -43,45 +34,36 @@
         .btn-success:hover { background: #059669; }
 
         /* Loading Spinner CSS */
-        .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 3px solid #ffffff;
-            width: 16px;
-            height: 16px;
-            animation: spin 0.8s linear infinite;
-            display: inline-block;
-            margin-right: 8px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .spinner { border: 3px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top: 3px solid #ffffff; width: 16px; height: 16px; animation: spin 0.8s linear infinite; display: inline-block; margin-right: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* Modern Tables */
         table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 14px; }
-        th, td { padding: 12px 15px; border-bottom: 1px solid var(--border); text-align: left; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
         th { background-color: #f8fafc; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; }
         tr:hover { background-color: #f8fafc; }
         tr:last-child td { border-bottom: none; }
-
-        /* Typography Alignment Fixes */
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         strong { color: #0f172a; }
 
-        /* Status Badges (Pills) */
+        /* Status Badges */
         .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; text-align: center; }
         .badge-success { background: #dcfce7; color: #166534; }
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-warning { background: #fef9c3; color: #854d0e; }
+        .badge-neutral { background: #f1f5f9; color: #475569; }
 
         /* Alerts & SQL Code */
         .alerts { background: #fef2f2; padding: 15px; border-left: 5px solid #ef4444; border-radius: 0 8px 8px 0; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .alerts strong { color: #991b1b; font-size: 1.1rem; }
         .alerts ul { margin: 10px 0 0 0; color: #7f1d1d; padding-left: 20px; line-height: 1.6; }
-
         .sql-code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; background: #1e293b; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; display: block; white-space: pre-wrap; max-width: 600px; overflow-x: auto; border: 1px solid #0f172a; }
+
+        /* Progress Bar Container */
+        .progress-bar-container { background: #e2e8f0; border-radius: 12px; width: 100px; height: 20px; position: relative; margin: 0 auto; overflow: hidden; }
+        .progress-bar-fill { height: 100%; position: absolute; left: 0; top: 0; transition: width 0.5s ease; }
+        .progress-bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; font-weight: bold; line-height: 20px; z-index: 2; }
     </style>
 </head>
 <body>
@@ -106,7 +88,7 @@
         </div>
 
         <div id="longQueriesContainer" class="card" style="display: none; border-left: 4px solid #ef4444;">
-            <h3 style="color: #dc2626;">🚨 Active Blocked or Long-Running Queries</h3>
+            <h3 style="color: #dc2626;">🚨 Active Blocked, Long-Running, or Sleeping Queries</h3>
             <table>
                 <thead>
                     <tr>
@@ -117,6 +99,22 @@
                     </tr>
                 </thead>
                 <tbody id="longQueriesBody"></tbody>
+            </table>
+        </div>
+
+        <div id="agContainer" class="card" style="display: none; border-left: 4px solid #0ea5e9;">
+            <h3 style="color: #0ea5e9;">🔄 Availability Group Sync Health</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Database</th>
+                        <th>Secondary Server</th>
+                        <th class="text-center">State</th>
+                        <th class="text-right">Log Send Queue (MB)</th>
+                        <th class="text-right">Redo Queue (MB)</th>
+                    </tr>
+                </thead>
+                <tbody id="agTableBody"></tbody>
             </table>
         </div>
 
@@ -144,6 +142,8 @@
                         <th class="text-center">Status</th>
                         <th class="text-right">Size (MB)</th>
                         <th class="text-center">Backup (24h)</th>
+                        <th class="text-center">Log Usage</th>
+                        <th class="text-center">Log Wait Reason</th>
                     </tr>
                 </thead>
                 <tbody id="dbTableBody"></tbody>
@@ -178,7 +178,6 @@
 </div>
 
 <script>
-    // 1. Initial Page Load - Fetch and Sort Servers
     document.addEventListener("DOMContentLoaded", () => {
         fetch('/api/databases')
             .then(response => response.json())
@@ -194,12 +193,10 @@
             });
     });
 
-    // 2. Fetch Metrics Button
     function fetchMetrics() {
         const selectedServer = document.getElementById('serverSelect').value;
         if (!selectedServer) return alert("Please select a server first.");
 
-        // UI Loading State WITH CSS SPINNER!
         const btn = document.getElementById('refreshBtn');
         btn.innerHTML = '<span class="spinner"></span> Refreshing...';
         btn.disabled = true;
@@ -207,26 +204,26 @@
         document.getElementById('results').style.display = 'block';
         document.getElementById('alertBox').style.display = 'none';
         document.getElementById('longQueriesContainer').style.display = 'none';
+        document.getElementById('agContainer').style.display = 'none';
 
         const dbTbody = document.getElementById('dbTableBody');
         const driveTbody = document.getElementById('driveTableBody');
-        dbTbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Gathering database metrics...</td></tr>";
+        dbTbody.innerHTML = "<tr><td colspan='6' class='text-center' style='padding: 30px; color: #64748b;'>Gathering database metrics...</td></tr>";
         driveTbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Scanning server drives...</td></tr>";
 
         fetch(`/api/metrics?server=${selectedServer}`)
             .then(response => response.json())
             .then(data => {
-                // Restore button state
                 btn.innerHTML = "Refresh Dashboard";
                 btn.disabled = false;
 
                 if (data.error) {
-                    dbTbody.innerHTML = `<tr><td colspan='4' style="color:red; text-align:center;">Error: ${data.error}</td></tr>`;
+                    dbTbody.innerHTML = `<tr><td colspan='6' style="color:red; text-align:center;">Error: ${data.error}</td></tr>`;
                     driveTbody.innerHTML = "";
                     return;
                 }
 
-                // Handle Alerts
+                // 1. Alerts
                 const alertBox = document.getElementById('alertBox');
                 const alertList = document.getElementById('serverAlerts');
                 alertList.innerHTML = "";
@@ -239,7 +236,7 @@
                     });
                 }
 
-                // Handle Long Queries
+                // 2. Long & Sleeping Queries
                 const lqContainer = document.getElementById('longQueriesContainer');
                 const lqTbody = document.getElementById('longQueriesBody');
                 lqTbody.innerHTML = "";
@@ -257,7 +254,31 @@
                     });
                 }
 
-                // Handle Drives
+                // 3. AG Sync Health
+                const agContainer = document.getElementById('agContainer');
+                const agTbody = document.getElementById('agTableBody');
+                agTbody.innerHTML = "";
+                if (data.ag_sync && data.ag_sync.length > 0) {
+                    agContainer.style.display = 'block';
+                    data.ag_sync.forEach(ag => {
+                        const tr = document.createElement('tr');
+                        let stateBadge = ag.state === 'HEALTHY' || ag.state === 'SYNCHRONIZED' || ag.state === 'SYNCHRONIZING'
+                                         ? `<span class="badge badge-success">${ag.state}</span>` : `<span class="badge badge-danger">${ag.state}</span>`;
+                        let logBadge = ag.log_queue_mb > 100 ? `<span class="badge badge-danger">${ag.log_queue_mb} MB</span>` : `<span style="color: #10b981; font-weight: bold;">${ag.log_queue_mb} MB</span>`;
+                        let redoBadge = ag.redo_queue_mb > 100 ? `<span class="badge badge-danger">${ag.redo_queue_mb} MB</span>` : `<span style="color: #10b981; font-weight: bold;">${ag.redo_queue_mb} MB</span>`;
+
+                        tr.innerHTML = `
+                            <td><strong>${ag.database}</strong></td>
+                            <td>${ag.secondary}</td>
+                            <td class="text-center">${stateBadge}</td>
+                            <td class="text-right">${logBadge}</td>
+                            <td class="text-right">${redoBadge}</td>
+                        `;
+                        agTbody.appendChild(tr);
+                    });
+                }
+
+                // 4. Drives
                 driveTbody.innerHTML = "";
                 data.drives.forEach(drive => {
                     const tr = document.createElement('tr');
@@ -271,7 +292,7 @@
                     driveTbody.appendChild(tr);
                 });
 
-                // Handle Databases
+                // 5. Databases
                 dbTbody.innerHTML = "";
                 data.databases.forEach(db => {
                     const tr = document.createElement('tr');
@@ -283,20 +304,38 @@
                     else if (db.backup_status === 'MISSING') backupBadge = '<span class="badge badge-danger">MISSING</span>';
                     else backupBadge = `<span class="badge badge-warning">${db.backup_status}</span>`;
 
+                    let logWaitBadge = "";
+                    if (db.log_wait === 'NOTHING') logWaitBadge = '<span class="badge badge-neutral">NOTHING</span>';
+                    else if (db.log_wait === 'LOG_BACKUP') logWaitBadge = '<span class="badge badge-warning">LOG_BACKUP</span>';
+                    else if (db.log_wait === 'AVAILABILITY_REPLICA') logWaitBadge = '<span class="badge badge-danger">AG_REPLICA</span>';
+                    else logWaitBadge = `<span class="badge badge-warning">${db.log_wait}</span>`;
+
+                    // --- NEW CALM PROGRESS BAR FOR LOGS ---
+                    let logPct = db.log_used_pct || 0;
+                    let barColor = logPct > 85 ? '#ef4444' : (logPct > 50 ? '#f59e0b' : '#10b981'); // Red (>85), Yellow (>50), Green
+                    let textColor = logPct > 50 ? '#ffffff' : '#334155'; // White text on filled part, dark text on empty part
+
+                    let logBarHtml = `
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" style="background: ${barColor}; width: ${logPct}%;"></div>
+                            <div class="progress-bar-text" style="color: ${textColor};">${logPct}%</div>
+                        </div>
+                    `;
+
                     tr.innerHTML = `
                         <td><strong>${db.name}</strong></td>
                         <td class="text-center">${statusBadge}</td>
                         <td class="text-right">${db.size_mb.toLocaleString(undefined, {minimumFractionDigits: 2})} MB</td>
                         <td class="text-center">${backupBadge}</td>
+                        <td class="text-center">${logBarHtml}</td>
+                        <td class="text-center">${logWaitBadge}</td>
                     `;
                     dbTbody.appendChild(tr);
                 });
 
-                // Populate and Sort Index Dropdown
                 const dbSelect = document.getElementById('dbSelect');
                 dbSelect.innerHTML = '<option value="">-- Select a Database --</option>';
                 const sortedDatabases = data.databases.sort((a, b) => a.name.localeCompare(b.name));
-
                 sortedDatabases.forEach(db => {
                     const option = document.createElement('option');
                     option.value = db.name;
@@ -307,18 +346,16 @@
             .catch(err => {
                 btn.innerHTML = "Refresh Dashboard";
                 btn.disabled = false;
-                dbTbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Failed to connect to backend.</td></tr>`;
+                dbTbody.innerHTML = `<tr><td colspan='6' class="text-center" style="color:red;">Failed to connect to backend.</td></tr>`;
                 console.error(err);
             });
     }
 
-    // 3. Fetch Indexes Button
     function fetchIndexes() {
         const selectedServer = document.getElementById('serverSelect').value;
         const selectedDB = document.getElementById('dbSelect').value;
         if (!selectedServer || !selectedDB) return alert("Please select both a server and a database.");
 
-        // UI Loading State WITH CSS SPINNER!
         const btn = document.getElementById('indexBtn');
         btn.innerHTML = '<span class="spinner"></span> Scanning...';
         btn.disabled = true;
