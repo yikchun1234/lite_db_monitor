@@ -1,0 +1,17 @@
+{
+  "Production_DB_1": {
+    "type": "postgres",
+    "host": "192.168.1.10",
+    "port": 5432,
+    "user": "monitor_user",
+    "password": "secure_password",
+    "database": "prod_db"
+  },
+  "Reporting_DB_2": {
+    "type": "sqlserver",
+    "host": "192.168.1.11",
+    "user": "monitor_user",
+    "password": "secure_password",
+    "database": "report_db"
+  }
+}
