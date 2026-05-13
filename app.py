@@ -218,9 +218,10 @@ def get_security():
         except Exception as e: return jsonify({"error": str(e)}), 500
     return jsonify({"error": "Unsupported database type"})
 
-# ---------- HIGH-PERFORMANCE INDEX CHECKING ----------
-@app.route('/api/indexes', methods=['GET'])
-def get_indexes():
+
+# ---------- NEW: FETCH TABLES FOR SPECIFIC DB ----------
+@app.route('/api/tables', methods=['GET'])
+def get_tables():
     server_name = request.args.get('server')
     db_name = request.args.get('db')
     with open('config.json') as config_file: live_configs = json.load(config_file)
@@ -235,8 +236,42 @@ def get_indexes():
             conn = pyodbc.connect(conn_str, timeout=10)
             cursor = conn.cursor()
             
-            # --- THE "SMART SQL" TRICK: Fast metadata scan + targeted physical scan ---
-            index_query = """
+            # Fetch all user tables
+            cursor.execute("SELECT name FROM sys.tables WHERE is_ms_shipped = 0 ORDER BY name;")
+            tables = [row.name for row in cursor.fetchall()]
+            conn.close()
+            return jsonify({"tables": tables})
+        except Exception as e: return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Unsupported database type"})
+
+
+# ---------- HIGH-PERFORMANCE INDEX CHECKING ----------
+@app.route('/api/indexes', methods=['GET'])
+def get_indexes():
+    server_name = request.args.get('server')
+    db_name = request.args.get('db')
+    table_name = request.args.get('table', 'all')
+    
+    with open('config.json') as config_file: live_configs = json.load(config_file)
+    if server_name not in live_configs: return jsonify({"error": "Server not found"}), 404
+    config = live_configs[server_name]
+    
+    if config['type'] == 'sqlserver':
+        try:
+            server_address = config['host']
+            if config.get('port') and str(config['port']).strip() != '': server_address = f"{server_address},{config['port']}"
+            conn_str = (f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_address};DATABASE={db_name};UID={config['user']};PWD={{{config['password']}}};Encrypt=yes;TrustServerCertificate=yes;")
+            conn = pyodbc.connect(conn_str, timeout=10)
+            cursor = conn.cursor()
+            
+            # Filter specifically if a table is requested
+            table_filter = ""
+            params = []
+            if table_name and table_name != 'all':
+                table_filter = " AND OBJECT_NAME(i.object_id) = ? "
+                params.append(table_name)
+
+            index_query = f"""
                 WITH LargeIndexes AS (
                     SELECT 
                         i.object_id, 
@@ -246,7 +281,7 @@ def get_indexes():
                     FROM sys.indexes i WITH (NOLOCK)
                     INNER JOIN sys.dm_db_partition_stats ps WITH (NOLOCK) 
                         ON i.object_id = ps.object_id AND i.index_id = ps.index_id
-                    WHERE i.name IS NOT NULL
+                    WHERE i.name IS NOT NULL {table_filter}
                     GROUP BY i.object_id, i.index_id, i.name
                     HAVING SUM(ps.used_page_count) > 1000
                 )
@@ -260,7 +295,12 @@ def get_indexes():
                 WHERE ips.avg_fragmentation_in_percent > 10.0
                 ORDER BY ips.avg_fragmentation_in_percent DESC;
             """
-            cursor.execute(index_query)
+            
+            if params:
+                cursor.execute(index_query, params)
+            else:
+                cursor.execute(index_query)
+                
             indexes = [{"table": row.TableName, "index": row.IndexName, "fragmentation": row.Fragmentation, "pages": row.PageCount} for row in cursor.fetchall()]
             conn.close()
             return jsonify({"indexes": indexes})
