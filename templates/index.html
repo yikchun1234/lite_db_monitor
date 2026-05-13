@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📊 Database Admin Portal</title>
+    <title>Database Admin Portal</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
 
     <style>
@@ -20,10 +20,14 @@
 
         /* Login Screen Styles */
         .login-wrapper { display: flex; justify-content: center; align-items: center; min-height: 90vh; }
-        .login-card { background: white; border-radius: 12px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border); }
+        .login-card { background: white; border-radius: 12px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border); position: relative; }
         .login-card h2 { margin-top: 0; color: #0f172a; margin-bottom: 5px; font-size: 1.8rem; }
         .login-card p { color: #64748b; margin-bottom: 25px; font-size: 14px; }
         .login-card .form-group { text-align: left; }
+
+        /* NEW: Info Button on Login Screen */
+        .info-btn-login { position: absolute; top: 15px; right: 15px; background: #e2e8f0; color: #475569; border: none; border-radius: 50%; width: 28px; height: 28px; font-weight: bold; font-family: serif; font-size: 14px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .info-btn-login:hover { background: var(--primary); color: white; transform: scale(1.1); }
 
         /* Main Container & Cards */
         .container { max-width: 1200px; margin: auto; }
@@ -142,6 +146,8 @@
 
 <div class="login-wrapper">
     <div class="login-card">
+        <button class="info-btn-login" onclick="openAboutModal()" title="About this portal">i</button>
+
         <div style="font-size: 50px; margin-bottom: 10px;">🛡️</div>
         <h2>Secure Access</h2>
         <p>Please log in to manage your database servers.</p>
@@ -156,10 +162,42 @@
         </div>
 
         <button id="loginBtn" onclick="attemptLogin()" style="width: 100%;">Secure Login</button>
+
+        <div style="margin-top: 25px; font-size: 13px; color: #94a3b8; font-weight: 500;">
+            Designed and created by Amos
+        </div>
+    </div>
+</div>
+
+<div id="aboutModal" class="modal">
+    <div class="modal-content" style="width: 450px; text-align: left; padding: 30px;">
+        <span class="close-btn" onclick="closeAboutModal()">&times;</span>
+        <h3 style="margin-top: 0; color: #0f172a; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px; font-size: 1.3rem;">ℹ️ About this Portal</h3>
+
+        <p style="color: #475569; font-size: 14px; line-height: 1.6;">
+            <strong>Function:</strong><br>
+            This is a highly secure, read-only monitoring dashboard designed to provide real-time health metrics, active query analysis, and security validation for SQL Server instances.
+        </p>
+
+        <p style="color: #475569; font-size: 14px; line-height: 1.6; margin-bottom: 5px;">
+            <strong>How to Use:</strong>
+        </p>
+        <ul style="color: #475569; font-size: 13px; line-height: 1.6; padding-left: 20px; margin-top: 5px;">
+            <li><strong>Log in</strong> using your authorized Admin credentials.</li>
+            <li>Click the <strong>➕ (Add)</strong> button to securely register new SQL Servers. Passwords are automatically encrypted via the internal cipher suite.</li>
+            <li>Select a server from the dropdown and click <strong>Refresh Dashboard</strong> to view live metrics (Storage, Agent Jobs, Active Queries, AlwaysOn Sync, etc.).</li>
+            <li>Use the specialized tools at the bottom to actively scan for <strong>Index Fragmentation</strong> or validate <strong>Post-Restore Security</strong>.</li>
+            <li>Hover over any <strong>(?)</strong> icon for a built-in DBA interactive guide.</li>
+        </ul>
+
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 20px; text-align: center; padding-top: 15px; border-top: 1px solid #f0f2f5;">
+            <em>For your security, the system will automatically lock and log you out after 5 minutes of inactivity.</em>
+        </p>
     </div>
 </div>
 
 <script>
+    // Toast logic
     function showToast(message, type = 'success') {
         const container = document.getElementById('toastContainer');
         const toast = document.createElement('div');
@@ -171,6 +209,16 @@
         setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3500);
     }
 
+    // Modal logic for Login Screen
+    function openAboutModal() {
+        document.getElementById('aboutModal').style.display = 'block';
+    }
+
+    function closeAboutModal() {
+        document.getElementById('aboutModal').style.display = 'none';
+    }
+
+    // Login logic
     function attemptLogin() {
         const user = document.getElementById('loginUser').value;
         const pass = document.getElementById('loginPass').value;
@@ -495,7 +543,6 @@
             showToast("Session expired due to inactivity. Logging out...", "info");
         }
 
-        // Wait just a brief moment so they see the toast if it's an auto-logout
         setTimeout(() => {
             fetch('/api/logout', { method: 'POST' })
             .then(() => window.location.reload())
@@ -503,23 +550,21 @@
         }, isAuto ? 1500 : 0);
     }
 
-    // --- NEW: 5-Minute Inactivity Auto-Logout Tracker ---
+    // --- 5-Minute Inactivity Auto-Logout Tracker ---
     let inactivityTimer;
-    const INACTIVITY_LIMIT_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
+    const INACTIVITY_LIMIT_MS = 5 * 60 * 1000;
 
     function resetInactivityTimer() {
         clearTimeout(inactivityTimer);
-        // Set new timer to trigger auto-logout
         inactivityTimer = setTimeout(() => performLogout(true), INACTIVITY_LIMIT_MS);
     }
 
-    // Listen for all human activity to reset the 5-minute countdown
     window.onload = resetInactivityTimer;
     document.onmousemove = resetInactivityTimer;
     document.onkeypress = resetInactivityTimer;
-    document.onmousedown = resetInactivityTimer; // Mouse clicks
-    document.ontouchstart = resetInactivityTimer; // Touchscreens
-    document.onscroll = resetInactivityTimer; // Scrolling
+    document.onmousedown = resetInactivityTimer;
+    document.ontouchstart = resetInactivityTimer;
+    document.onscroll = resetInactivityTimer;
 
     // --- Global Custom Tooltip Engine ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -740,7 +785,6 @@
         const selectedServer = document.getElementById('serverSelect').value;
         if (!selectedServer) return showToast("Please select a server first.", "error");
 
-        // NEW: Instantly smooth scroll back to the top of the page!
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
         const btn = document.getElementById('refreshBtn');
@@ -754,7 +798,6 @@
         document.getElementById('alertBox').style.display = 'none'; document.getElementById('longQueriesContainer').style.display = 'none';
         document.getElementById('failedJobsContainer').style.display = 'none'; document.getElementById('agContainer').style.display = 'none';
 
-        // Hide the bottom tool results and clear tables
         document.getElementById('indexResults').style.display = 'none';
         document.getElementById('indexTableBody').innerHTML = '';
         document.getElementById('indexPagination').innerHTML = '';
