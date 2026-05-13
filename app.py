@@ -193,6 +193,7 @@ def delete_server():
 @login_required
 def get_metrics():
     server_name = request.args.get('server')
+    conn = None # Initialize to None for the finally block
     
     with open('config.json') as config_file:
         live_configs = json.load(config_file)
@@ -208,7 +209,6 @@ def get_metrics():
             if config.get('port') and str(config['port']).strip() != '':
                 server_address = f"{server_address},{config['port']}"
                 
-            # DECRYPT THE PASSWORD TO CONNECT
             real_password = decrypt_password(config['password'])
 
             conn_str = (
@@ -233,7 +233,7 @@ def get_metrics():
             cursor.execute(drive_query)
             all_drives = [{"letter": r.DriveLetter, "free_percent": round(r.FreeSpacePercent, 2), "free_gb": float(r.FreeSpaceGB), "total_gb": float(r.TotalSpaceGB)} for r in cursor.fetchall()]
 
-            # 2. DATABASES, BACKUP, AUTO-SHRINK
+            # 2. DATABASES
             db_query = """
                 WITH BackupCTE AS (SELECT database_name, MAX(backup_finish_date) as LastBackup FROM msdb.dbo.backupset WHERE type = 'D' GROUP BY database_name)
                 SELECT d.name AS DatabaseName, d.state_desc AS Status, ISNULL(SUM(mf.size * 8.0 / 1024), 0) AS Size_in_MB, d.log_reuse_wait_desc AS LogWait, d.is_auto_shrink_on AS IsAutoShrink, CASE WHEN d.name = 'tempdb' THEN 'N/A' WHEN b.LastBackup >= DATEADD(hh, -24, GETDATE()) THEN 'OK' ELSE 'MISSING' END AS BackupStatus
@@ -247,7 +247,7 @@ def get_metrics():
                     "name": row.DatabaseName, "status": row.Status, "size_mb": round(row.Size_in_MB, 2), "log_wait": row.LogWait, "backup_status": row.BackupStatus, "auto_shrink": True if row.IsAutoShrink == 1 else False, "log_used_pct": 0 
                 })
 
-            # 3. AG SYNC HEALTH
+            # 3. AG SYNC
             ag_query = """
                 SELECT DB_NAME(drs.database_id) AS DatabaseName, ar.replica_server_name AS SecondaryServer, drs.synchronization_state_desc AS SyncState, CAST(ISNULL(drs.log_send_queue_size, 0) / 1024.0 AS DECIMAL(18,2)) AS LogSendQueueMB, CAST(ISNULL(drs.redo_queue_size, 0) / 1024.0 AS DECIMAL(18,2)) AS RedoQueueMB
                 FROM sys.dm_hadr_database_replica_states drs WITH (nolock) JOIN sys.availability_replicas ar WITH (nolock) ON drs.replica_id = ar.replica_id WHERE drs.is_local = 0;
@@ -256,7 +256,6 @@ def get_metrics():
             ag_sync = []
             for row in cursor.fetchall():
                 ag_sync.append({"database": row.DatabaseName, "secondary": row.SecondaryServer, "state": row.SyncState, "log_queue_mb": float(row.LogSendQueueMB), "redo_queue_mb": float(row.RedoQueueMB)})
-                if float(row.LogSendQueueMB) > 500: alerts.append(f"🚨 CRITICAL: AG Replica '{row.SecondaryServer}' has a Log Send Queue of {row.LogSendQueueMB}MB for '{row.DatabaseName}'!")
 
             # 4. LOG FILE USAGE
             log_query = "SELECT RTRIM(instance_name) AS DatabaseName, cntr_value AS LogUsedPercent FROM sys.dm_os_performance_counters WHERE counter_name = 'Percent Log Used' AND instance_name NOT IN ('master', 'tempdb', 'model', 'msdb', '_Total');"
@@ -292,7 +291,6 @@ def get_metrics():
             cursor.execute(blocking_query)
             long_queries = []
             for row in cursor.fetchall():
-                if row.blocking_session_id != 0: alerts.append(f"🚨 CRITICAL: Session {row.session_id} on '{row.DatabaseName}' is BLOCKED by Session {row.blocking_session_id}!")
                 safe_query_text = str(row.QueryText) if row.QueryText else "N/A"
                 if len(safe_query_text) > 300: safe_query_text = safe_query_text[:300] + " ... [TRUNCATED]"
                 long_queries.append({"session_id": row.session_id, "database": row.DatabaseName, "seconds": row.SecondsRunning, "query_text": safe_query_text})
@@ -307,7 +305,6 @@ def get_metrics():
             cursor.execute(sleep_query)
             for row in cursor.fetchall():
                 if not any(q['session_id'] == row.session_id for q in long_queries):
-                    alerts.append(f"🚨 CRITICAL: Session {row.session_id} on '{row.DatabaseName}' is SLEEPING with an open transaction for {row.SecondsRunning}s!")
                     safe_query_text = str(row.QueryText) if row.QueryText else "N/A"
                     if len(safe_query_text) > 300: safe_query_text = safe_query_text[:300] + " ... [TRUNCATED]"
                     long_queries.append({"session_id": row.session_id, "database": f"{row.DatabaseName} [SLEEPING]", "seconds": row.SecondsRunning, "query_text": safe_query_text})
@@ -332,8 +329,6 @@ def get_metrics():
 
             if len(alerts) == 0: alerts.append("✅ System is entirely healthy. No active alerts.")
 
-            conn.close()
-
             return jsonify({
                 "server_level_alerts": alerts, "drives": all_drives, "databases": all_databases, 
                 "long_queries": long_queries, "ag_sync": ag_sync, "failed_jobs": failed_jobs,
@@ -342,6 +337,14 @@ def get_metrics():
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        
+        # 🚨 THE FAILSAFE: Always close connection no matter what!
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except:
+                    pass
 
     return jsonify({"error": "Unsupported database type"})
 
@@ -351,6 +354,8 @@ def get_metrics():
 def get_security():
     server_name = request.args.get('server')
     db_name = request.args.get('db')
+    conn = None # Initialize
+    
     with open('config.json') as config_file: live_configs = json.load(config_file)
     if server_name not in live_configs: return jsonify({"error": "Server not found"}), 404
     config = live_configs[server_name]
@@ -359,7 +364,7 @@ def get_security():
         try:
             server_address = config['host']
             if config.get('port') and str(config['port']).strip() != '': server_address = f"{server_address},{config['port']}"
-            real_password = decrypt_password(config['password']) # DECRYPTED
+            real_password = decrypt_password(config['password'])
             conn_str = (f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_address};DATABASE={db_name};UID={config['user']};PWD={{{real_password}}};Encrypt=yes;TrustServerCertificate=yes;")
             conn = pyodbc.connect(conn_str, timeout=10)
             cursor = conn.cursor()
@@ -372,9 +377,15 @@ def get_security():
             cursor.execute(owner_query)
             db_owners = [{"user": r.UserName, "type": r.UserType} for r in cursor.fetchall()]
             
-            conn.close()
             return jsonify({"orphaned": orphaned_users, "owners": db_owners})
-        except Exception as e: return jsonify({"error": str(e)}), 500
+        except Exception as e: 
+            return jsonify({"error": str(e)}), 500
+        # 🚨 THE FAILSAFE
+        finally:
+            if conn:
+                try: conn.close()
+                except: pass
+
     return jsonify({"error": "Unsupported database type"})
 
 
@@ -384,6 +395,8 @@ def get_security():
 def get_tables():
     server_name = request.args.get('server')
     db_name = request.args.get('db')
+    conn = None # Initialize
+    
     with open('config.json') as config_file: live_configs = json.load(config_file)
     if server_name not in live_configs: return jsonify({"error": "Server not found"}), 404
     config = live_configs[server_name]
@@ -392,16 +405,22 @@ def get_tables():
         try:
             server_address = config['host']
             if config.get('port') and str(config['port']).strip() != '': server_address = f"{server_address},{config['port']}"
-            real_password = decrypt_password(config['password']) # DECRYPTED
+            real_password = decrypt_password(config['password'])
             conn_str = (f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_address};DATABASE={db_name};UID={config['user']};PWD={{{real_password}}};Encrypt=yes;TrustServerCertificate=yes;")
             conn = pyodbc.connect(conn_str, timeout=10)
             cursor = conn.cursor()
             
             cursor.execute("SELECT name FROM sys.tables WHERE is_ms_shipped = 0 ORDER BY name;")
             tables = [row.name for row in cursor.fetchall()]
-            conn.close()
             return jsonify({"tables": tables})
-        except Exception as e: return jsonify({"error": str(e)}), 500
+        except Exception as e: 
+            return jsonify({"error": str(e)}), 500
+        # 🚨 THE FAILSAFE
+        finally:
+            if conn:
+                try: conn.close()
+                except: pass
+
     return jsonify({"error": "Unsupported database type"})
 
 
@@ -412,6 +431,7 @@ def get_indexes():
     server_name = request.args.get('server')
     db_name = request.args.get('db')
     table_name = request.args.get('table', 'all')
+    conn = None # Initialize
     
     with open('config.json') as config_file: live_configs = json.load(config_file)
     if server_name not in live_configs: return jsonify({"error": "Server not found"}), 404
@@ -421,7 +441,7 @@ def get_indexes():
         try:
             server_address = config['host']
             if config.get('port') and str(config['port']).strip() != '': server_address = f"{server_address},{config['port']}"
-            real_password = decrypt_password(config['password']) # DECRYPTED
+            real_password = decrypt_password(config['password'])
             conn_str = (f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_address};DATABASE={db_name};UID={config['user']};PWD={{{real_password}}};Encrypt=yes;TrustServerCertificate=yes;")
             conn = pyodbc.connect(conn_str, timeout=10)
             cursor = conn.cursor()
@@ -449,9 +469,15 @@ def get_indexes():
             else: cursor.execute(index_query)
                 
             indexes = [{"table": row.TableName, "index": row.IndexName, "fragmentation": row.Fragmentation, "pages": row.PageCount} for row in cursor.fetchall()]
-            conn.close()
             return jsonify({"indexes": indexes})
-        except Exception as e: return jsonify({"error": str(e)}), 500
+        except Exception as e: 
+            return jsonify({"error": str(e)}), 500
+        # 🚨 THE FAILSAFE
+        finally:
+            if conn:
+                try: conn.close()
+                except: pass
+
     return jsonify({"error": "Unsupported database type"})
 
 if __name__ == '__main__':
