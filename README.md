@@ -11,9 +11,8 @@ Step to use
    "py -m pip install pyodbc"
 6. batch (cmd) install cryptography
    "pip install cryptography"
-7. update details 
-   app.py
-   ADMIN_USERNAME = "admin"
+7. update details in app.py
+   ADMIN_USERNAME = "admin",
    ADMIN_PASSWORD = "YOURNEWPASSWORD"
 8. open batch (cmd)
    "cd path/to/your/folder"
