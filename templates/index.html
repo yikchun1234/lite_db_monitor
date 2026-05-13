@@ -110,7 +110,7 @@
             justify-content: center;
         }
 
-        button:hover {
+        button:hover:not(:disabled) {
             background: var(--primary-hover);
             transform: translateY(-1px);
         }
@@ -129,36 +129,16 @@
             color: #94a3b8;
         }
 
-        .btn-success {
-            background: #10b981;
-            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
-        }
+        .btn-success { background: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); }
+        .btn-success:hover:not(:disabled) { background: #059669; }
+        .btn-indigo { background: #6366f1; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3); }
+        .btn-indigo:hover:not(:disabled) { background: #4f46e5; }
+        .btn-page { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; box-shadow: none; font-size: 13px; padding: 6px 12px; }
+        .btn-page:hover:not(:disabled) { background: #e2e8f0; }
 
-        .btn-success:hover {
-            background: #059669;
-        }
-
-        .btn-indigo {
-            background: #6366f1;
-            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
-        }
-
-        .btn-indigo:hover {
-            background: #4f46e5;
-        }
-
-        .btn-page {
-            background: #f1f5f9;
-            color: #334155;
-            border: 1px solid #cbd5e1;
-            box-shadow: none;
-            font-size: 13px;
-            padding: 6px 12px;
-        }
-
-        .btn-page:hover:not(:disabled) {
-            background: #e2e8f0;
-        }
+        /* NEW: Outline Button for "Add Server" */
+        .btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); box-shadow: none; }
+        .btn-outline:hover:not(:disabled) { background: #f0f9ff; transform: translateY(-1px); color: var(--primary-hover); border-color: var(--primary-hover); }
 
         /* Loading Spinner CSS */
         .spinner {
@@ -170,75 +150,27 @@
             animation: spin 0.8s linear infinite;
             display: inline-block;
             margin-right: 8px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Responsive Table Wrapper for Horizontal Scrolling */
-        .table-responsive {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* Modern Tables */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 5px;
-            font-size: 14px;
-            min-width: 600px;
-        }
-
-        th, td {
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--border);
-            text-align: left;
             vertical-align: middle;
         }
+        .spinner-dark { border: 3px solid #e2e8f0; border-top: 3px solid var(--primary); }
 
-        th {
-            background-color: #f8fafc;
-            color: #64748b;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 12px;
-            letter-spacing: 0.05em;
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        tr:hover {
-            background-color: #f8fafc;
-        }
+        /* Responsive Table Wrapper for Horizontal Scrolling */
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        .text-right {
-            text-align: right;
-        }
-        .text-center {
-            text-align: center;
-        }
-
-        strong {
-            color: #0f172a;
-        }
+        /* Modern Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 14px; min-width: 600px; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+        th { background-color: #f8fafc; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; }
+        tr:hover { background-color: #f8fafc; }
+        tr:last-child td { border-bottom: none; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        strong { color: #0f172a; }
 
         /* Status Badges */
-        .badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 700;
-            display: inline-block;
-            text-align: center;
-            white-space: nowrap;
-        }
-
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; text-align: center; white-space: nowrap; }
         .badge-success { background: #dcfce7; color: #166534; }
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-warning { background: #fef9c3; color: #854d0e; }
@@ -246,102 +178,42 @@
         .badge-indigo { background: #e0e7ff; color: #3730a3; }
 
         /* Alerts & SQL Code */
-        .alerts {
-            background: #fef2f2;
-            padding: 15px;
-            border-left: 5px solid #ef4444;
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 25px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
+        .alerts { background: #fef2f2; padding: 15px; border-left: 5px solid #ef4444; border-radius: 0 8px 8px 0; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .alerts strong { color: #991b1b; font-size: 1.1rem; }
+        .alerts ul { margin: 10px 0 0 0; color: #7f1d1d; padding-left: 20px; line-height: 1.6; }
+        .alerts-healthy { background: #f0fdf4; border-left-color: #22c55e; }
+        .alerts-healthy strong { color: #15803d; }
+        .alerts-healthy ul { color: #166534; }
 
-        .alerts strong {
-            color: #991b1b;
-            font-size: 1.1rem;
-        }
+        .sql-code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; background: #1e293b; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; display: block; white-space: pre-wrap; min-width: 300px; max-width: 100%; overflow-x: auto; border: 1px solid #0f172a; }
+        .error-code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; color: #991b1b; background: #fee2e2; padding: 8px; border-radius: 4px; display: block; white-space: pre-wrap; min-width: 300px; }
 
-        .alerts ul {
-            margin: 10px 0 0 0;
-            color: #7f1d1d;
-            padding-left: 20px;
-            line-height: 1.6;
-        }
+        /* Progress Bar */
+        .progress-bar-container { background: #e2e8f0; border-radius: 12px; width: 100px; height: 20px; position: relative; margin: 0 auto; overflow: hidden; }
+        .progress-bar-fill { height: 100%; position: absolute; left: 0; top: 0; transition: width 0.5s ease; }
+        .progress-bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; font-weight: bold; line-height: 20px; z-index: 2; }
 
-        .alerts-healthy {
-            background: #f0fdf4;
-            border-left-color: #22c55e;
-        }
-        .alerts-healthy strong {
-            color: #15803d;
-        }
-        .alerts-healthy ul {
-            color: #166534;
-        }
-
-        .sql-code {
-            font-family: "Cascadia Code", Consolas, monospace;
-            font-size: 12.5px;
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 10px 12px;
-            border-radius: 6px;
-            display: block;
-            white-space: pre-wrap;
-            min-width: 300px;
-            max-width: 100%;
-            overflow-x: auto;
-            border: 1px solid #0f172a;
-        }
-
-        .error-code {
-            font-family: "Cascadia Code", Consolas, monospace;
-            font-size: 12.5px;
-            color: #991b1b;
-            background: #fee2e2;
-            padding: 8px;
-            border-radius: 4px;
-            display: block;
-            white-space: pre-wrap;
-            min-width: 300px;
-        }
-
-        /* Progress Bar Container */
-        .progress-bar-container {
-            background: #e2e8f0;
-            border-radius: 12px;
-            width: 100px;
-            height: 20px;
-            position: relative;
-            margin: 0 auto;
-            overflow: hidden;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            position: absolute;
-            left: 0;
-            top: 0;
-            transition: width 0.5s ease;
-        }
-
-        .progress-bar-text {
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            font-size: 11px;
-            font-weight: bold;
-            line-height: 20px;
-            z-index: 2;
-        }
+        /* NEW: Add Server Modal Styles */
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .modal-content { background-color: #fff; margin: 10% auto; padding: 30px; border-radius: 12px; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; }
+        .close-btn { position: absolute; top: 20px; right: 25px; font-size: 24px; cursor: pointer; color: #64748b; font-weight: bold; }
+        .close-btn:hover { color: #0f172a; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
+        .form-group input { width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; outline: none; }
+        .form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2); }
 
     </style>
 </head>
 <body>
 
 <div class="container">
+
     <div class="header-card">
         <h2>📊 Database Administration Portal</h2>
         <div class="controls">
+            <button id="openModalBtn" class="btn-outline" onclick="openAddServerModal()">➕</button>
+
             <select id="serverSelect">
                 <option value="">-- Select a Server --</option>
             </select>
@@ -512,7 +384,7 @@
         <h3>🔐 Post-Restore Security Validator</h3>
         <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">Identify broken (orphaned) users and review all db_owner admins.</p>
         <div class="controls">
-            <select id="dbSecuritySelect" disabled><option value="">-- Select a Database --</option></select>
+            <select id="dbSecuritySelect" disabled onchange="checkSecurityDB()"><option value="">-- Select a Database --</option></select>
             <button id="securityBtn" class="btn-indigo" onclick="fetchSecurity()" disabled>Validate Security</button>
         </div>
         <div id="securityResults" style="display: none; margin-top: 20px;">
@@ -533,37 +405,148 @@
             </div>
         </div>
     </div>
+</div>
 
+<div id="addServerModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeAddServerModal()">&times;</span>
+        <h3 style="margin-top: 0; color: #0f172a; margin-bottom: 20px;">➕ Add New Server</h3>
+
+        <div class="form-group">
+            <label>Server Alias (Display Name)</label>
+            <input type="text" id="newAlias" placeholder="e.g. Production_DB_1" required>
+        </div>
+        <div class="form-group">
+            <label>Host (IP or DNS Name)</label>
+            <input type="text" id="newHost" placeholder="e.g. 192.168.1.50" required>
+        </div>
+        <div class="form-group">
+            <label>Port (Optional)</label>
+            <input type="text" id="newPort" placeholder="e.g. 1433">
+        </div>
+        <div class="form-group">
+            <label>SQL Username</label>
+            <input type="text" id="newUser" placeholder="e.g. sa" required>
+        </div>
+        <div class="form-group" style="margin-bottom: 25px;">
+            <label>Password</label>
+            <input type="password" id="newPassword" placeholder="••••••••" required>
+        </div>
+
+        <button onclick="submitNewServer()" style="width: 100%;" id="saveServerBtn" class="btn-success">Save Server</button>
+    </div>
 </div>
 
 <script>
-    // --- Global Variables for Pagination ---
+    // --- Global Variables ---
     let globalIndexData = [];
     let currentIdxPage = 1;
     const idxRowsPerPage = 10;
 
+    // --- Core Loading ---
     document.addEventListener("DOMContentLoaded", () => {
+        loadServerDropdown();
+    });
+
+    // Wrapped server loading so we can call it after adding a new server!
+    function loadServerDropdown(autoSelectAlias = null) {
         fetch('/api/databases')
             .then(response => response.json())
             .then(servers => {
                 servers.sort((a, b) => a.localeCompare(b));
                 const select = document.getElementById('serverSelect');
+                select.innerHTML = '<option value="">-- Select a Server --</option>'; // Clear existing
                 servers.forEach(server => {
                     const option = document.createElement('option');
                     option.value = server;
                     option.textContent = server;
                     select.appendChild(option);
                 });
-            });
-    });
 
-    function setToolsEnabled(enabled) {
-        document.getElementById('dbIndexSelect').disabled = !enabled;
-        document.getElementById('indexBtn').disabled = !enabled;
-        document.getElementById('dbSecuritySelect').disabled = !enabled;
-        document.getElementById('securityBtn').disabled = !enabled;
+                // If a new server was just added, auto-select it!
+                if(autoSelectAlias) {
+                    select.value = autoSelectAlias;
+                }
+            });
     }
 
+    // --- NEW: Modal Logic ---
+    function openAddServerModal() {
+        document.getElementById('addServerModal').style.display = 'block';
+    }
+
+    function closeAddServerModal() {
+        document.getElementById('addServerModal').style.display = 'none';
+    }
+
+    function submitNewServer() {
+        const alias = document.getElementById('newAlias').value.trim();
+        const host = document.getElementById('newHost').value.trim();
+        const port = document.getElementById('newPort').value.trim();
+        const user = document.getElementById('newUser').value.trim();
+        const password = document.getElementById('newPassword').value.trim();
+
+        if (!alias || !host || !user || !password) {
+            return alert("Alias, Host, Username, and Password are required fields.");
+        }
+
+        const btn = document.getElementById('saveServerBtn');
+        btn.innerHTML = '<span class="spinner spinner-dark" style="border-top-color: white; border-color: rgba(255,255,255,0.3);"></span> Saving...';
+        btn.disabled = true;
+
+        const serverData = { alias, host, port, type: "sqlserver", user, password };
+
+        fetch('/api/servers/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(serverData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.innerHTML = "Save Server";
+            btn.disabled = false;
+
+            if (data.error) {
+                alert("Error saving server: " + data.error);
+            } else {
+                alert("✅ Success! " + data.message);
+
+                // Clear the form fields
+                document.getElementById('newAlias').value = '';
+                document.getElementById('newHost').value = '';
+                document.getElementById('newPort').value = '';
+                document.getElementById('newUser').value = '';
+                document.getElementById('newPassword').value = '';
+
+                closeAddServerModal();
+
+                // Reload the dropdown and immediately select the new server!
+                loadServerDropdown(alias);
+            }
+        })
+        .catch(err => {
+            btn.innerHTML = "Save Server";
+            btn.disabled = false;
+            alert("Failed to reach backend API.");
+        });
+    }
+
+
+    // --- Tool Enablers ---
+    function setToolsEnabled(enabled) {
+        document.getElementById('dbIndexSelect').disabled = !enabled;
+        document.getElementById('dbSecuritySelect').disabled = !enabled;
+        document.getElementById('indexBtn').disabled = true;
+        document.getElementById('securityBtn').disabled = true;
+    }
+
+    function checkSecurityDB() {
+        const db = document.getElementById('dbSecuritySelect').value;
+        document.getElementById('securityBtn').disabled = !db;
+    }
+
+
+    // --- Main Metrics Fetch ---
     function fetchMetrics() {
         const selectedServer = document.getElementById('serverSelect').value;
         if (!selectedServer) return alert("Please select a server first.");
@@ -573,7 +556,6 @@
         btn.disabled = true;
         setToolsEnabled(false);
 
-        // Reset the table dropdown entirely when dashboard refreshes
         const tableSelect = document.getElementById('tableIndexSelect');
         tableSelect.innerHTML = '<option value="all">-- All Tables (Slow) --</option>';
         tableSelect.disabled = true;
@@ -586,14 +568,14 @@
 
         const sysadminBody = document.getElementById('sysadminBody');
         const restoreBody = document.getElementById('restoreBody');
-        sysadminBody.innerHTML = "<tr><td colspan='3' class='text-center' style='padding: 20px; color: #64748b;'>Refreshing...</td></tr>";
-        restoreBody.innerHTML = "<tr><td colspan='3' class='text-center' style='padding: 20px; color: #64748b;'>Refreshing...</td></tr>";
+        sysadminBody.innerHTML = "<tr><td colspan='3' class='text-center' style='padding: 20px; color: #64748b;'><span class='spinner spinner-dark'></span> Refreshing...</td></tr>";
+        restoreBody.innerHTML = "<tr><td colspan='3' class='text-center' style='padding: 20px; color: #64748b;'><span class='spinner spinner-dark'></span> Refreshing...</td></tr>";
 
         const dbTbody = document.getElementById('dbTableBody');
         const driveTbody = document.getElementById('driveTableBody');
 
-        dbTbody.innerHTML = "<tr><td colspan='7' class='text-center' style='padding: 30px; color: #64748b;'>Gathering database metrics...</td></tr>";
-        driveTbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Scanning server drives...</td></tr>";
+        dbTbody.innerHTML = "<tr><td colspan='7' class='text-center' style='padding: 30px; color: #64748b;'><span class='spinner spinner-dark'></span> Gathering database metrics...</td></tr>";
+        driveTbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'><span class='spinner spinner-dark'></span> Scanning server drives...</td></tr>";
 
         fetch(`/api/metrics?server=${selectedServer}`)
             .then(response => response.json())
@@ -652,7 +634,7 @@
                     restoreBody.innerHTML = `<tr><td colspan='3' class="text-center" style="color: #64748b;">No databases restored in the last 7 days.</td></tr>`;
                 }
 
-                // 4. Long & Sleeping Queries
+                // 4. Long Queries
                 const lqContainer = document.getElementById('longQueriesContainer');
                 const lqTbody = document.getElementById('longQueriesBody');
                 lqTbody.innerHTML = "";
@@ -663,7 +645,7 @@
                     });
                 }
 
-                // 5. Failed Agent Jobs
+                // 5. Failed Jobs
                 const fjContainer = document.getElementById('failedJobsContainer');
                 const fjTbody = document.getElementById('failedJobsBody');
                 fjTbody.innerHTML = "";
@@ -753,20 +735,22 @@
             });
     }
 
-    // --- NEW: Fetch Tables for Selected Database and Show Loading Spinner ---
+    // --- Index Fragment Scanner tools ---
     function fetchTablesForIndex() {
         const selectedServer = document.getElementById('serverSelect').value;
         const selectedDB = document.getElementById('dbIndexSelect').value;
         const tableSelect = document.getElementById('tableIndexSelect');
         const scanBtn = document.getElementById('indexBtn');
 
-        // Reset the table dropdown
         tableSelect.innerHTML = '<option value="all">-- All Tables (Slow) --</option>';
         tableSelect.disabled = true;
 
-        if (!selectedServer || !selectedDB) return;
+        if (!selectedServer || !selectedDB) {
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = "Scan Indexes";
+            return;
+        }
 
-        // SHOW SPINNER ON THE SCAN BUTTON WHILE LOADING TABLES
         scanBtn.innerHTML = '<span class="spinner"></span> Loading Tables...';
         scanBtn.disabled = true;
 
@@ -779,21 +763,16 @@
                     });
                     tableSelect.disabled = false;
                 }
-
-                // RESTORE THE SCAN BUTTON TO BE CLICKABLE AGAIN
                 scanBtn.innerHTML = "Scan Indexes";
                 scanBtn.disabled = false;
             })
             .catch(e => {
                 console.error("Error fetching tables", e);
-                // RESTORE THE BUTTON EVEN IF IT FAILS
                 scanBtn.innerHTML = "Scan Indexes";
                 scanBtn.disabled = false;
             });
     }
 
-
-    // --- Javascript Pagination Logic ---
     function renderIndexPage(page) {
         currentIdxPage = page;
         const tbody = document.getElementById('indexTableBody');
@@ -866,7 +845,7 @@
         const tbody = document.getElementById('indexTableBody');
         const paginationDiv = document.getElementById('indexPagination');
 
-        tbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Scanning indexes (This might take a few seconds)...</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'><span class='spinner spinner-dark'></span> Scanning indexes (This might take a few seconds)...</td></tr>";
         paginationDiv.innerHTML = "";
 
         fetch(`/api/indexes?server=${selectedServer}&db=${selectedDB}&table=${encodeURIComponent(selectedTable)}`)
@@ -895,6 +874,7 @@
             });
     }
 
+    // --- Security Check ---
     function fetchSecurity() {
         const selectedServer = document.getElementById('serverSelect').value;
         const selectedDB = document.getElementById('dbSecuritySelect').value;
@@ -909,8 +889,8 @@
         const oTbody = document.getElementById('orphanedTableBody');
         const owTbody = document.getElementById('ownerTableBody');
 
-        oTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 10px; color: #64748b;'>Scanning users...</td></tr>";
-        owTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 10px; color: #64748b;'>Loading db_owners...</td></tr>";
+        oTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 10px; color: #64748b;'><span class='spinner spinner-dark'></span> Scanning users...</td></tr>";
+        owTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 10px; color: #64748b;'><span class='spinner spinner-dark'></span> Loading db_owners...</td></tr>";
 
         fetch(`/api/security?server=${selectedServer}&db=${selectedDB}`)
             .then(r => r.json()).then(data => {
