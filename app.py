@@ -13,7 +13,7 @@ app.secret_key = os.urandom(24)
 # 🔐 ADMIN CREDENTIALS (CHANGE THESE!)
 # ==========================================
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "YOURNEWPASSWORD"
+ADMIN_PASSWORD = "Admin123!"
 
 # ==========================================
 # 🔐 ENCRYPTION ENGINE SETUP
