@@ -9,12 +9,14 @@ Step to use
 4. modify enviroment variable PATH as display in the install
 5. batch (cmd) install python odbc
    "py -m pip install pyodbc"
-6. update details
+6. batch (cmd) install cryptography
+   "pip install cryptography"
+7. update details
    "config.json"
-7. open batch (cmd)
+8. open batch (cmd)
    "cd path/to/your/folder"
    "python app.py"
-8.  Open the Browser: Open Chrome, Edge, or whatever browser you prefer. (http://127.0.0.1:5000).   
+9.  Open the Browser: Open Chrome, Edge, or whatever browser you prefer. (http://127.0.0.1:5000).   
 
 P/S 
 Enter the Local Server URL: * If you are running the browser on the same machine where Python is running, type: http://localhost:5000 in the address bar.
