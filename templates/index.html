@@ -6,58 +6,239 @@
     <title>Database Health Monitor</title>
     <style>
         /* Modern System Font & Background */
-        :root { --primary: #0ea5e9; --primary-hover: #0284c7; --bg: #f0f2f5; --text: #334155; --border: #e2e8f0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background: var(--bg); color: var(--text); margin: 0; }
+        :root {
+            --primary: #0ea5e9;
+            --primary-hover: #0284c7;
+            --bg: #f0f2f5;
+            --text: #334155;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+        }
 
         /* Main Container & Cards */
-        .container { max-width: 1200px; margin: auto; }
-        .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); margin-bottom: 25px; border: 1px solid var(--border); }
-        .card h3 { margin-top: 0; color: #0f172a; font-size: 1.1rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; margin-bottom: 15px; }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            margin-bottom: 25px;
+            border: 1px solid var(--border);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #0f172a;
+            font-size: 1.1rem;
+            border-bottom: 2px solid var(--bg);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
 
         /* Sticky Header Card */
         .header-card {
-            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 12px; padding: 20px 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 25px; border: 1px solid var(--border);
-            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
-            position: sticky; top: 15px; z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            position: sticky;
+            top: 15px;
+            z-index: 1000;
         }
-        .header-card h2 { margin: 0; color: #0f172a; font-size: 1.6rem; }
+
+        .header-card h2 {
+            margin: 0;
+            color: #0f172a;
+            font-size: 1.6rem;
+        }
 
         /* Controls & Buttons */
-        .controls { display: flex; gap: 15px; align-items: center; }
-        select { padding: 10px 15px; font-size: 15px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; background: #fff; min-width: 250px; cursor: pointer; }
-        select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2); }
-        button { padding: 10px 20px; font-size: 15px; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3); display: flex; align-items: center; justify-content: center; }
-        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
-        button:disabled { background: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; opacity: 0.7; }
-        select:disabled { background: #f8fafc; cursor: not-allowed; color: #94a3b8; }
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
 
-        .btn-success { background: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); }
-        .btn-success:hover { background: #059669; }
-        .btn-indigo { background: #6366f1; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3); }
-        .btn-indigo:hover { background: #4f46e5; }
-        .btn-page { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; box-shadow: none; font-size: 13px; padding: 6px 12px; }
-        .btn-page:hover:not(:disabled) { background: #e2e8f0; }
+        select {
+            padding: 10px 15px;
+            font-size: 15px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            outline: none;
+            background: #fff;
+            min-width: 250px;
+            cursor: pointer;
+        }
+
+        select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            opacity: 0.7;
+        }
+
+        select:disabled {
+            background: #f8fafc;
+            cursor: not-allowed;
+            color: #94a3b8;
+        }
+
+        .btn-success {
+            background: #10b981;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-indigo {
+            background: #6366f1;
+            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-indigo:hover {
+            background: #4f46e5;
+        }
+
+        .btn-page {
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            box-shadow: none;
+            font-size: 13px;
+            padding: 6px 12px;
+        }
+
+        .btn-page:hover:not(:disabled) {
+            background: #e2e8f0;
+        }
 
         /* Loading Spinner CSS */
-        .spinner { border: 3px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top: 3px solid #ffffff; width: 16px; height: 16px; animation: spin 0.8s linear infinite; display: inline-block; margin-right: 8px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #ffffff;
+            width: 16px;
+            height: 16px;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
 
-        /* NEW: Responsive Table Wrapper for Horizontal Scrolling */
-        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive Table Wrapper for Horizontal Scrolling */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
 
         /* Modern Tables */
-        table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 14px; min-width: 600px; }
-        th, td { padding: 12px 15px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
-        th { background-color: #f8fafc; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; }
-        tr:hover { background-color: #f8fafc; }
-        tr:last-child td { border-bottom: none; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        strong { color: #0f172a; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+            font-size: 14px;
+            min-width: 600px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.05em;
+        }
+
+        tr:hover {
+            background-color: #f8fafc;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+
+        strong {
+            color: #0f172a;
+        }
 
         /* Status Badges */
-        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; text-align: center; white-space: nowrap; }
+        .badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-block;
+            text-align: center;
+            white-space: nowrap;
+        }
+
         .badge-success { background: #dcfce7; color: #166534; }
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-warning { background: #fef9c3; color: #854d0e; }
@@ -65,26 +246,99 @@
         .badge-indigo { background: #e0e7ff; color: #3730a3; }
 
         /* Alerts & SQL Code */
-        .alerts { background: #fef2f2; padding: 15px; border-left: 5px solid #ef4444; border-radius: 0 8px 8px 0; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .alerts strong { color: #991b1b; font-size: 1.1rem; }
-        .alerts ul { margin: 10px 0 0 0; color: #7f1d1d; padding-left: 20px; line-height: 1.6; }
-        .alerts-healthy { background: #f0fdf4; border-left-color: #22c55e; }
-        .alerts-healthy strong { color: #15803d; }
-        .alerts-healthy ul { color: #166534; }
+        .alerts {
+            background: #fef2f2;
+            padding: 15px;
+            border-left: 5px solid #ef4444;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
 
-        .sql-code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; background: #1e293b; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; display: block; white-space: pre-wrap; min-width: 300px; max-width: 100%; overflow-x: auto; border: 1px solid #0f172a; }
-        .error-code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; color: #991b1b; background: #fee2e2; padding: 8px; border-radius: 4px; display: block; white-space: pre-wrap; min-width: 300px; }
+        .alerts strong {
+            color: #991b1b;
+            font-size: 1.1rem;
+        }
+
+        .alerts ul {
+            margin: 10px 0 0 0;
+            color: #7f1d1d;
+            padding-left: 20px;
+            line-height: 1.6;
+        }
+
+        .alerts-healthy {
+            background: #f0fdf4;
+            border-left-color: #22c55e;
+        }
+        .alerts-healthy strong {
+            color: #15803d;
+        }
+        .alerts-healthy ul {
+            color: #166534;
+        }
+
+        .sql-code {
+            font-family: "Cascadia Code", Consolas, monospace;
+            font-size: 12.5px;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 10px 12px;
+            border-radius: 6px;
+            display: block;
+            white-space: pre-wrap;
+            min-width: 300px;
+            max-width: 100%;
+            overflow-x: auto;
+            border: 1px solid #0f172a;
+        }
+
+        .error-code {
+            font-family: "Cascadia Code", Consolas, monospace;
+            font-size: 12.5px;
+            color: #991b1b;
+            background: #fee2e2;
+            padding: 8px;
+            border-radius: 4px;
+            display: block;
+            white-space: pre-wrap;
+            min-width: 300px;
+        }
 
         /* Progress Bar Container */
-        .progress-bar-container { background: #e2e8f0; border-radius: 12px; width: 100px; height: 20px; position: relative; margin: 0 auto; overflow: hidden; }
-        .progress-bar-fill { height: 100%; position: absolute; left: 0; top: 0; transition: width 0.5s ease; }
-        .progress-bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; font-weight: bold; line-height: 20px; z-index: 2; }
+        .progress-bar-container {
+            background: #e2e8f0;
+            border-radius: 12px;
+            width: 100px;
+            height: 20px;
+            position: relative;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            transition: width 0.5s ease;
+        }
+
+        .progress-bar-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            line-height: 20px;
+            z-index: 2;
+        }
+
     </style>
 </head>
 <body>
 
 <div class="container">
-
     <div class="header-card">
         <h2>📊 Database Administration Portal</h2>
         <div class="controls">
@@ -223,15 +477,24 @@
                 </table>
             </div>
         </div>
+
     </div>
 
     <div class="card">
         <h3>⚡ Index Fragmentation Scanner</h3>
-        <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">Safely scans for fragmentation > 10% on tables with > 1000 pages.</p>
+        <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
+            Safely scans for fragmentation > 10% on tables with > 1000 pages. Select a specific table to scan it instantly!
+        </p>
         <div class="controls">
-            <select id="dbIndexSelect" disabled><option value="">-- Select a Database --</option></select>
+            <select id="dbIndexSelect" disabled onchange="fetchTablesForIndex()">
+                <option value="">-- Select a Database --</option>
+            </select>
+            <select id="tableIndexSelect" disabled>
+                <option value="all">-- All Tables (Slow) --</option>
+            </select>
             <button id="indexBtn" class="btn-success" onclick="fetchIndexes()" disabled>Scan Indexes</button>
         </div>
+
         <div id="indexResults" style="display: none; margin-top: 20px;">
             <div class="table-responsive">
                 <table>
@@ -260,6 +523,7 @@
                     <tbody id="orphanedTableBody"></tbody>
                 </table>
             </div>
+
             <h4 style="color: #0ea5e9; margin-bottom: 5px;">Database Owners (Full Admin Access)</h4>
             <div class="table-responsive">
                 <table>
@@ -307,8 +571,12 @@
         const btn = document.getElementById('refreshBtn');
         btn.innerHTML = '<span class="spinner"></span> Refreshing...';
         btn.disabled = true;
-
         setToolsEnabled(false);
+
+        // Reset the table dropdown entirely when dashboard refreshes
+        const tableSelect = document.getElementById('tableIndexSelect');
+        tableSelect.innerHTML = '<option value="all">-- All Tables (Slow) --</option>';
+        tableSelect.disabled = true;
 
         document.getElementById('results').style.display = 'block';
         document.getElementById('alertBox').style.display = 'none';
@@ -323,6 +591,7 @@
 
         const dbTbody = document.getElementById('dbTableBody');
         const driveTbody = document.getElementById('driveTableBody');
+
         dbTbody.innerHTML = "<tr><td colspan='7' class='text-center' style='padding: 30px; color: #64748b;'>Gathering database metrics...</td></tr>";
         driveTbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Scanning server drives...</td></tr>";
 
@@ -334,7 +603,9 @@
 
                 if (data.error) {
                     dbTbody.innerHTML = `<tr><td colspan='7' style="color:red; text-align:center;">Error: ${data.error}</td></tr>`;
-                    sysadminBody.innerHTML = ""; restoreBody.innerHTML = ""; driveTbody.innerHTML = "";
+                    sysadminBody.innerHTML = "";
+                    restoreBody.innerHTML = "";
+                    driveTbody.innerHTML = "";
                     return;
                 }
 
@@ -343,15 +614,20 @@
                 const alertTitle = document.getElementById('alertTitle');
                 const alertList = document.getElementById('serverAlerts');
                 alertList.innerHTML = "";
+
                 if (data.server_level_alerts && data.server_level_alerts.length > 0) {
                     alertBox.style.display = 'block';
                     if (data.server_level_alerts[0].includes("System is entirely healthy")) {
-                        alertBox.className = "alerts alerts-healthy"; alertTitle.innerHTML = "✅ Server Health Status";
+                        alertBox.className = "alerts alerts-healthy";
+                        alertTitle.innerHTML = "✅ Server Health Status";
                     } else {
-                        alertBox.className = "alerts"; alertTitle.innerHTML = "⚠️ Critical Server Alerts";
+                        alertBox.className = "alerts";
+                        alertTitle.innerHTML = "⚠️ Critical Server Alerts";
                     }
                     data.server_level_alerts.forEach(alert => {
-                        let li = document.createElement('li'); li.textContent = alert; alertList.appendChild(li);
+                        let li = document.createElement('li');
+                        li.textContent = alert;
+                        alertList.appendChild(li);
                     });
                 }
 
@@ -405,9 +681,16 @@
                 if (data.ag_sync && data.ag_sync.length > 0) {
                     agContainer.style.display = 'block';
                     data.ag_sync.forEach(ag => {
-                        let stateBadge = ag.state === 'HEALTHY' || ag.state === 'SYNCHRONIZED' || ag.state === 'SYNCHRONIZING' ? `<span class="badge badge-success">${ag.state}</span>` : `<span class="badge badge-danger">${ag.state}</span>`;
-                        let logBadge = ag.log_queue_mb > 100 ? `<span class="badge badge-danger">${ag.log_queue_mb} MB</span>` : `<span style="color: #10b981; font-weight: bold;">${ag.log_queue_mb} MB</span>`;
-                        let redoBadge = ag.redo_queue_mb > 100 ? `<span class="badge badge-danger">${ag.redo_queue_mb} MB</span>` : `<span style="color: #10b981; font-weight: bold;">${ag.redo_queue_mb} MB</span>`;
+                        let stateBadge = ag.state === 'HEALTHY' || ag.state === 'SYNCHRONIZED' || ag.state === 'SYNCHRONIZING'
+                            ? `<span class="badge badge-success">${ag.state}</span>`
+                            : `<span class="badge badge-danger">${ag.state}</span>`;
+                        let logBadge = ag.log_queue_mb > 100
+                            ? `<span class="badge badge-danger">${ag.log_queue_mb} MB</span>`
+                            : `<span style="color: #10b981; font-weight: bold;">${ag.log_queue_mb} MB</span>`;
+                        let redoBadge = ag.redo_queue_mb > 100
+                            ? `<span class="badge badge-danger">${ag.redo_queue_mb} MB</span>`
+                            : `<span style="color: #10b981; font-weight: bold;">${ag.redo_queue_mb} MB</span>`;
+
                         agTbody.innerHTML += `<tr><td><strong>${ag.database}</strong></td><td>${ag.secondary}</td><td class="text-center">${stateBadge}</td><td class="text-right">${logBadge}</td><td class="text-right">${redoBadge}</td></tr>`;
                     });
                 }
@@ -415,21 +698,32 @@
                 // 7. Drives
                 driveTbody.innerHTML = "";
                 data.drives.forEach(drive => {
-                    let driveBadge = drive.free_percent < 10.0 ? `<span class="badge badge-danger">${drive.free_percent}%</span>` : `<span class="badge badge-success">${drive.free_percent}%</span>`;
+                    let driveBadge = drive.free_percent < 10.0
+                        ? `<span class="badge badge-danger">${drive.free_percent}%</span>`
+                        : `<span class="badge badge-success">${drive.free_percent}%</span>`;
                     driveTbody.innerHTML += `<tr><td><strong>${drive.letter}</strong></td><td class="text-right">${drive.free_gb.toLocaleString(undefined, {minimumFractionDigits: 2})} GB</td><td class="text-right">${drive.total_gb.toLocaleString(undefined, {minimumFractionDigits: 2})} GB</td><td class="text-right">${driveBadge}</td></tr>`;
                 });
 
                 // 8. Databases
                 dbTbody.innerHTML = "";
                 data.databases.forEach(db => {
-                    let statusBadge = (db.status.toUpperCase() === 'ONLINE') ? '<span class="badge badge-success">ONLINE</span>' : `<span class="badge badge-danger">${db.status}</span>`;
-                    let backupBadge = db.backup_status === 'OK' ? '<span class="badge badge-success">OK</span>' : (db.backup_status === 'MISSING' ? '<span class="badge badge-danger">MISSING</span>' : `<span class="badge badge-warning">${db.backup_status}</span>`);
+                    let statusBadge = (db.status.toUpperCase() === 'ONLINE')
+                        ? '<span class="badge badge-success">ONLINE</span>'
+                        : `<span class="badge badge-danger">${db.status}</span>`;
+                    let backupBadge = db.backup_status === 'OK'
+                        ? '<span class="badge badge-success">OK</span>'
+                        : (db.backup_status === 'MISSING' ? '<span class="badge badge-danger">MISSING</span>' : `<span class="badge badge-warning">${db.backup_status}</span>`);
                     let autoShrinkBadge = db.auto_shrink ? '<span class="badge badge-warning">ON</span>' : '<span class="badge badge-neutral">OFF</span>';
-                    let logWaitBadge = db.log_wait === 'NOTHING' ? '<span class="badge badge-neutral">NOTHING</span>' : (db.log_wait === 'LOG_BACKUP' ? '<span class="badge badge-warning">LOG_BACKUP</span>' : (db.log_wait === 'AVAILABILITY_REPLICA' ? '<span class="badge badge-danger">AG_REPLICA</span>' : `<span class="badge badge-warning">${db.log_wait}</span>`));
+
+                    let logWaitBadge = db.log_wait === 'NOTHING'
+                        ? '<span class="badge badge-neutral">NOTHING</span>'
+                        : (db.log_wait === 'LOG_BACKUP' ? '<span class="badge badge-warning">LOG_BACKUP</span>'
+                        : (db.log_wait === 'AVAILABILITY_REPLICA' ? '<span class="badge badge-danger">AG_REPLICA</span>'
+                        : `<span class="badge badge-warning">${db.log_wait}</span>`));
+
                     let logPct = db.log_used_pct || 0;
                     let barColor = logPct > 85 ? '#ef4444' : (logPct > 50 ? '#f59e0b' : '#10b981');
                     let textColor = logPct > 50 ? '#ffffff' : '#334155';
-
                     let logBarHtml = `<div class="progress-bar-container"><div class="progress-bar-fill" style="background: ${barColor}; width: ${logPct}%;"></div><div class="progress-bar-text" style="color: ${textColor};">${logPct}%</div></div>`;
 
                     dbTbody.innerHTML += `<tr><td><strong>${db.name}</strong></td><td class="text-center">${statusBadge}</td><td class="text-right">${db.size_mb.toLocaleString(undefined, {minimumFractionDigits: 2})} MB</td><td class="text-center">${backupBadge}</td><td class="text-center">${autoShrinkBadge}</td><td class="text-center">${logBarHtml}</td><td class="text-center">${logWaitBadge}</td></tr>`;
@@ -438,8 +732,10 @@
                 // Populate Dropdowns
                 const dbIndexSelect = document.getElementById('dbIndexSelect');
                 const dbSecuritySelect = document.getElementById('dbSecuritySelect');
+
                 dbIndexSelect.innerHTML = '<option value="">-- Select a Database --</option>';
                 dbSecuritySelect.innerHTML = '<option value="">-- Select a Database --</option>';
+
                 const sortedDatabases = data.databases.sort((a, b) => a.name.localeCompare(b.name));
                 sortedDatabases.forEach(db => {
                     dbIndexSelect.innerHTML += `<option value="${db.name}">${db.name}</option>`;
@@ -447,15 +743,55 @@
                 });
 
                 setToolsEnabled(true);
-
             })
             .catch(err => {
-                btn.innerHTML = "Refresh Dashboard"; btn.disabled = false;
+                btn.innerHTML = "Refresh Dashboard";
+                btn.disabled = false;
                 dbTbody.innerHTML = `<tr><td colspan='7' class="text-center" style="color:red;">Failed to connect to backend.</td></tr>`;
                 console.error(err);
                 setToolsEnabled(false);
             });
     }
+
+    // --- NEW: Fetch Tables for Selected Database and Show Loading Spinner ---
+    function fetchTablesForIndex() {
+        const selectedServer = document.getElementById('serverSelect').value;
+        const selectedDB = document.getElementById('dbIndexSelect').value;
+        const tableSelect = document.getElementById('tableIndexSelect');
+        const scanBtn = document.getElementById('indexBtn');
+
+        // Reset the table dropdown
+        tableSelect.innerHTML = '<option value="all">-- All Tables (Slow) --</option>';
+        tableSelect.disabled = true;
+
+        if (!selectedServer || !selectedDB) return;
+
+        // SHOW SPINNER ON THE SCAN BUTTON WHILE LOADING TABLES
+        scanBtn.innerHTML = '<span class="spinner"></span> Loading Tables...';
+        scanBtn.disabled = true;
+
+        fetch(`/api/tables?server=${selectedServer}&db=${selectedDB}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.tables) {
+                    data.tables.forEach(t => {
+                        tableSelect.innerHTML += `<option value="${t}">${t}</option>`;
+                    });
+                    tableSelect.disabled = false;
+                }
+
+                // RESTORE THE SCAN BUTTON TO BE CLICKABLE AGAIN
+                scanBtn.innerHTML = "Scan Indexes";
+                scanBtn.disabled = false;
+            })
+            .catch(e => {
+                console.error("Error fetching tables", e);
+                // RESTORE THE BUTTON EVEN IF IT FAILS
+                scanBtn.innerHTML = "Scan Indexes";
+                scanBtn.disabled = false;
+            });
+    }
+
 
     // --- Javascript Pagination Logic ---
     function renderIndexPage(page) {
@@ -469,7 +805,10 @@
 
         pageData.forEach(idx => {
             const tr = document.createElement('tr');
-            let fragBadge = idx.fragmentation > 30 ? `<span class="badge badge-danger">${idx.fragmentation}%</span>` : `<span class="badge badge-warning">${idx.fragmentation}%</span>`;
+            let fragBadge = idx.fragmentation > 30
+                ? `<span class="badge badge-danger">${idx.fragmentation}%</span>`
+                : `<span class="badge badge-warning">${idx.fragmentation}%</span>`;
+
             tr.innerHTML = `
                 <td><strong>${idx.table}</strong></td>
                 <td>${idx.index}</td>
@@ -515,10 +854,14 @@
     function fetchIndexes() {
         const selectedServer = document.getElementById('serverSelect').value;
         const selectedDB = document.getElementById('dbIndexSelect').value;
+        const selectedTable = document.getElementById('tableIndexSelect').value;
+
         if (!selectedServer || !selectedDB) return alert("Please select both a server and a database.");
 
         const btn = document.getElementById('indexBtn');
-        btn.innerHTML = '<span class="spinner"></span> Scanning...'; btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Scanning...';
+        btn.disabled = true;
+
         document.getElementById('indexResults').style.display = 'block';
         const tbody = document.getElementById('indexTableBody');
         const paginationDiv = document.getElementById('indexPagination');
@@ -526,9 +869,10 @@
         tbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #64748b;'>Scanning indexes (This might take a few seconds)...</td></tr>";
         paginationDiv.innerHTML = "";
 
-        fetch(`/api/indexes?server=${selectedServer}&db=${selectedDB}`)
+        fetch(`/api/indexes?server=${selectedServer}&db=${selectedDB}&table=${encodeURIComponent(selectedTable)}`)
             .then(r => r.json()).then(data => {
-                btn.innerHTML = "Scan Indexes"; btn.disabled = false;
+                btn.innerHTML = "Scan Indexes";
+                btn.disabled = false;
 
                 if (data.error) {
                     tbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Error: ${data.error}</td></tr>`;
@@ -545,7 +889,8 @@
                 renderIndexPage(1);
 
             }).catch(e => {
-                btn.innerHTML = "Scan Indexes"; btn.disabled = false;
+                btn.innerHTML = "Scan Indexes";
+                btn.disabled = false;
                 tbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Failed to connect.</td></tr>`;
             });
     }
@@ -553,25 +898,50 @@
     function fetchSecurity() {
         const selectedServer = document.getElementById('serverSelect').value;
         const selectedDB = document.getElementById('dbSecuritySelect').value;
+
         if (!selectedServer || !selectedDB) return alert("Please select both a server and a database.");
+
         const btn = document.getElementById('securityBtn');
-        btn.innerHTML = '<span class="spinner"></span> Validating...'; btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Validating...';
+        btn.disabled = true;
+
         document.getElementById('securityResults').style.display = 'block';
         const oTbody = document.getElementById('orphanedTableBody');
         const owTbody = document.getElementById('ownerTableBody');
+
         oTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 10px; color: #64748b;'>Scanning users...</td></tr>";
         owTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 10px; color: #64748b;'>Loading db_owners...</td></tr>";
+
         fetch(`/api/security?server=${selectedServer}&db=${selectedDB}`)
             .then(r => r.json()).then(data => {
-                btn.innerHTML = "Validate Security"; btn.disabled = false;
-                if (data.error) { oTbody.innerHTML = `<tr><td colspan='2' class="text-center" style="color:red;">Error: ${data.error}</td></tr>`; owTbody.innerHTML = ""; return; }
+                btn.innerHTML = "Validate Security";
+                btn.disabled = false;
+
+                if (data.error) {
+                    oTbody.innerHTML = `<tr><td colspan='2' class="text-center" style="color:red;">Error: ${data.error}</td></tr>`;
+                    owTbody.innerHTML = "";
+                    return;
+                }
+
                 oTbody.innerHTML = "";
-                if (data.orphaned.length === 0) { oTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 15px; color: #10b981; font-weight: bold;'>✅ No orphaned users found. Access is secure!</td></tr>"; }
-                else { data.orphaned.forEach(u => oTbody.innerHTML += `<tr><td><strong>${u.user}</strong> <span class="badge badge-danger">ORPHANED</span></td><td>${u.type}</td></tr>`); }
+                if (data.orphaned.length === 0) {
+                    oTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 15px; color: #10b981; font-weight: bold;'>✅ No orphaned users found. Access is secure!</td></tr>";
+                } else {
+                    data.orphaned.forEach(u => oTbody.innerHTML += `<tr><td><strong>${u.user}</strong> <span class="badge badge-danger">ORPHANED</span></td><td>${u.type}</td></tr>`);
+                }
+
                 owTbody.innerHTML = "";
-                if (data.owners.length === 0) { owTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 15px; color: #64748b;'>No additional db_owners found.</td></tr>"; }
-                else { data.owners.forEach(u => owTbody.innerHTML += `<tr><td><strong>${u.user}</strong></td><td><span class="badge badge-indigo">${u.type}</span></td></tr>`); }
-            }).catch(e => { btn.innerHTML = "Validate Security"; btn.disabled = false; oTbody.innerHTML = `<tr><td colspan='2' class="text-center" style="color:red;">Failed to connect.</td></tr>`; });
+                if (data.owners.length === 0) {
+                    owTbody.innerHTML = "<tr><td colspan='2' class='text-center' style='padding: 15px; color: #64748b;'>No additional db_owners found.</td></tr>";
+                } else {
+                    data.owners.forEach(u => owTbody.innerHTML += `<tr><td><strong>${u.user}</strong></td><td><span class="badge badge-indigo">${u.type}</span></td></tr>`);
+                }
+
+            }).catch(e => {
+                btn.innerHTML = "Validate Security";
+                btn.disabled = false;
+                oTbody.innerHTML = `<tr><td colspan='2' class="text-center" style="color:red;">Failed to connect.</td></tr>`;
+            });
     }
 </script>
 
