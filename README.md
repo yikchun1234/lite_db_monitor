@@ -6,12 +6,12 @@ Step to use
 2. Follow the instruction add path and install it. 
 3. batch (cmd) install
 ```
-   "python -m pip install flask"
+   python -m pip install flask
 ```   
 4. modify enviroment variable PATH as display in the install
 5. batch (cmd) install
 ```
-   "pip install -r requirements.txt"
+   pip install -r requirements.txt
 ```   
 6. update details in .env.example
 ```
@@ -23,16 +23,18 @@ Step to use
 ```
 7. rename it to .env
  
-8. open batch (cmd)
+8. open batch (cmd) cd to your file location
 ```
-   "cd path/to/your/folder"
-   
-   "py app.py"
+   cd path/to/your/folder
+```
+9. start up the service
 ```   
-9.  Open the Browser: Open Chrome, Edge, or whatever browser you prefer. (http://127.0.0.1:5000).
-10. Login the ADMIN_USERNAME, ADMIN_PASSWORD
-11. Add your own server connection string in the "+"
-12. Refresh dashboard add all the details will come out
+   py app.py
+```   
+10.  Open the Browser: Open Chrome, Edge, or whatever browser you prefer. (http://127.0.0.1:5000).
+11. Login the ADMIN_USERNAME, ADMIN_PASSWORD
+12. Add your own server connection string in the "+"
+13. Refresh dashboard add all the details will come out
 
 P/S 
 Enter the Local Server URL: * If you are running the browser on the same machine where Python is running, type: http://localhost:5000 in the address bar.
