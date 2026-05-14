@@ -8,7 +8,7 @@ Step to use
 ```
    python -m pip install flask
 ```   
-4. modify enviroment variable PATH as display in the install
+4. add enviroment variable PATH as display in the install
 5. batch (cmd) install
 ```
    pip install -r requirements.txt
