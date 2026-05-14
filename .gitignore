@@ -1,0 +1,21 @@
+# SQLite Databases
+*.db
+*.sqlite3
+monitor.db
+
+# Security & Encryption Keys (CRITICAL)
+encryption.key
+*.key
+
+# Old configuration files
+config.json
+config.json.backup_migrated
+
+# Python compiled files and cache
+__pycache__/
+*.py[cod]
+
+# Virtual Environments
+venv/
+env/
+.env
