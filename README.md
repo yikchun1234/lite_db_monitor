@@ -4,8 +4,10 @@ Step to use
 
 1. Install python on https://www.python.org/downloads/
 2. Follow the instruction add path and install it. 
-3. batch (cmd) install 
+3. batch (cmd) install
+
    "python -m pip install flask"
+   
 4. modify enviroment variable PATH as display in the install
 5. batch (cmd) install
 
