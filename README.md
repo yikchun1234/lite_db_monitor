@@ -31,7 +31,7 @@ Step to use
    
 8.  Open the Browser: Open Chrome, Edge, or whatever browser you prefer. (http://127.0.0.1:5000).
 9. Login the ADMIN_USERNAME, ADMIN_PASSWORD
-10. Add your own server connection string in the "+"
+10. Add your own server connection string in the "+", instancce/monitor.db will store your connection string
 11. Refresh dashboard add all the details will come out
 
 P/S 
