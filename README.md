@@ -7,10 +7,13 @@ Step to use
 3. batch (cmd) install 
    "python -m pip install flask"
 4. modify enviroment variable PATH as display in the install
-5. batch (cmd) install python odbc
+5. batch (cmd) install
    "py -m pip install pyodbc"
-6. batch (cmd) install cryptography
+   
    "pip install cryptography"
+   
+   "pip install flask-sqlalchemy apscheduler SQLAlchemy"
+   
 7. update details in app.py
    ADMIN_USERNAME = "admin",
    ADMIN_PASSWORD = "YOURNEWPASSWORD"
