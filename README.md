@@ -18,8 +18,11 @@ Step to use
    "pip install flask-sqlalchemy apscheduler SQLAlchemy"
    
 6. update details in app.py
+
    ADMIN_USERNAME = "admin",
+   
    ADMIN_PASSWORD = "YOURNEWPASSWORD"
+   
 7. open batch (cmd)
 
    "cd path/to/your/folder"
