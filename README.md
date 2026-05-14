@@ -11,11 +11,7 @@ Step to use
 4. modify enviroment variable PATH as display in the install
 5. batch (cmd) install
 
-   "py -m pip install pyodbc"
-   
-   "pip install cryptography"
-   
-   "pip install flask-sqlalchemy apscheduler SQLAlchemy"
+   "pip install -r requirements.txt"
    
 6. update details in app.py
 
