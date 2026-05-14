@@ -31,7 +31,7 @@ Before running the application, ensure you have the following installed:
 
 1.  **Clone the Repository:**
     ```cmd
-    git clone [https://github.com/yikchun1234/lite_db_health_monitor_mssql.git](https://github.com/yikchun1234/lite_db_health_monitor_mssql.git)
+    git clone https://github.com/yikchun1234/lite_db_health_monitor_mssql.git
     cd lite_db_health_monitor_mssql
     ```
 
