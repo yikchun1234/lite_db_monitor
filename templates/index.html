@@ -202,9 +202,37 @@
         </div>
 
         <div id="results" style="display: none;">
+
+            <div class="card" style="padding: 15px; border-left: 4px solid #64748b; background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <span style="color: #475569; font-size: 13px; font-weight: bold; text-transform: uppercase;">Engine Version</span><br>
+                    <strong id="serverVersion" style="font-size: 15px; color: #0f172a;">Loading...</strong>
+                </div>
+                <div style="text-align: right;">
+                    <span style="color: #475569; font-size: 13px; font-weight: bold; text-transform: uppercase;">Server Uptime</span><br>
+                    <strong id="serverUptime" style="font-size: 15px; color: #10b981;">Loading...</strong>
+                </div>
+            </div>
+
             <div id="alertBox" class="alerts" style="display: none;">
                 <strong id="alertTitle">⚠️ Critical Server Alerts</strong>
                 <ul id="serverAlerts"></ul>
+            </div>
+
+            <div id="errorLogContainer" class="card" style="display: none; border-left: 4px solid #b91c1c;">
+                <h3 style="color: #991b1b;">⚠️ Critical SQL Engine Errors (Last 24 Hours)</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 20%;">Log Date <span class="info-icon has-tooltip" data-tooltip="When the SQL Server engine threw this specific error internally.">?</span></th>
+                                <th style="width: 15%;">Process <span class="info-icon has-tooltip" data-tooltip="The internal thread (e.g., spid55, Logon) that caused the error.">?</span></th>
+                                <th style="width: 65%;">Error Text <span class="info-icon has-tooltip" data-tooltip="The exact text from the SQL Server Error Log. Look out for hardware I/O issues, memory dumps, or rapid login failures.">?</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="errorLogBody"></tbody>
+                    </table>
+                </div>
             </div>
 
             <div id="corruptionContainer" class="card" style="display: none; border-left: 4px solid #991b1b; background-color: #fef2f2;">
@@ -243,6 +271,40 @@
                             </tr>
                         </thead>
                         <tbody id="waitStatsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="connectionsContainer" class="card" style="display: none; border-left: 4px solid #06b6d4;">
+                <h3 style="color: #0891b2;">🔌 Active Connection Pool (Top 10)</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Database <span class="info-icon has-tooltip" data-tooltip="The database the application is connecting to.">?</span></th>
+                                <th>Login Name <span class="info-icon has-tooltip" data-tooltip="The specific account making the connections.">?</span></th>
+                                <th class="text-right">Active Connections <span class="info-icon has-tooltip" data-tooltip="<strong>Connection Leaks:</strong> If this number is extremely high (e.g., > 500) for a single app, developers likely forgot to run <code>conn.Close()</code> in their code!">?</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="connectionsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="missingIndexContainer" class="card" style="display: none; border-left: 4px solid #10b981;">
+                <h3 style="color: #059669;">📈 Top 5 High-Impact Missing Indexes</h3>
+                <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">SQL Server specifically recommends creating these indexes to fix slow queries.</p>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">Database <span class="info-icon has-tooltip" data-tooltip="The database where the slow query ran.">?</span></th>
+                                <th style="width: 25%;">Target Table <span class="info-icon has-tooltip" data-tooltip="The table that desperately needs an index.">?</span></th>
+                                <th class="text-center" style="width: 10%;">Impact <span class="info-icon has-tooltip" data-tooltip="The estimated percentage (%) by which query performance would improve if you created this index.">?</span></th>
+                                <th style="width: 50%;">Suggested Script <span class="info-icon has-tooltip" data-tooltip="Ready-to-use T-SQL script. <em>Note: Always review before running in Production!</em>">?</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="missingIndexBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -388,10 +450,10 @@
 
         <div class="card">
             <h3>⚡ Index Fragmentation Scanner</h3>
-            <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">Safely scans for fragmentation > 10% on tables with > 1000 pages. Select a specific table to scan it instantly!</p>
+            <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">Fast cache enabled! Scans index fragmentation > 10% on tables with > 1000 pages.</p>
             <div class="controls">
                 <select id="dbIndexSelect" disabled onchange="fetchTablesForIndex()"><option value="">-- Select a Database --</option></select>
-                <select id="tableIndexSelect" disabled><option value="all">-- All Tables (Slow) --</option></select>
+                <select id="tableIndexSelect" disabled><option value="all">-- All Tables --</option></select>
                 <button id="indexBtn" class="btn-success" onclick="fetchIndexes()" disabled>Scan Indexes</button>
             </div>
 
@@ -733,10 +795,14 @@
 
             setToolsEnabled(false);
             const tableSelect = document.getElementById('tableIndexSelect');
-            tableSelect.innerHTML = '<option value="all">-- All Tables (Slow) --</option>';
+            tableSelect.innerHTML = '<option value="all">-- All Tables --</option>';
             tableSelect.disabled = true;
 
+            // Make the results visible and immediately set the "Refreshing..." UI enhancement
             document.getElementById('results').style.display = 'block';
+            document.getElementById('serverVersion').innerHTML = "<span class='spinner spinner-dark' style='width: 12px; height: 12px; border-width: 2px;'></span> Refreshing...";
+            document.getElementById('serverUptime').innerHTML = "<span class='spinner spinner-dark' style='width: 12px; height: 12px; border-width: 2px;'></span> Refreshing...";
+
             document.getElementById('alertBox').style.display = 'none';
             document.getElementById('longQueriesContainer').style.display = 'none';
             document.getElementById('failedJobsContainer').style.display = 'none';
@@ -752,6 +818,12 @@
             document.getElementById('tempdbBody').innerHTML = "<tr><td colspan='5' class='text-center' style='padding: 20px; color: #64748b;'><span class='spinner spinner-dark'></span> Checking TempDB...</td></tr>";
             document.getElementById('corruptionContainer').style.display = 'none';
             document.getElementById('corruptionBody').innerHTML = "";
+            document.getElementById('errorLogContainer').style.display = 'none';
+            document.getElementById('errorLogBody').innerHTML = "";
+            document.getElementById('connectionsContainer').style.display = 'none';
+            document.getElementById('connectionsBody').innerHTML = "";
+            document.getElementById('missingIndexContainer').style.display = 'none';
+            document.getElementById('missingIndexBody').innerHTML = "";
 
             const sysadminBody = document.getElementById('sysadminBody');
             const restoreBody = document.getElementById('restoreBody');
@@ -771,8 +843,19 @@
 
                     if (data.error) {
                         if(data.error.includes("Unauthorized")) { window.location.reload(); return; }
+                        document.getElementById('serverVersion').innerText = "Error Loading";
+                        document.getElementById('serverUptime').innerText = "Error Loading";
                         dbTbody.innerHTML = `<tr><td colspan='7' style="color:red; text-align:center;">Error: ${data.error}</td></tr>`;
                         sysadminBody.innerHTML = ""; restoreBody.innerHTML = ""; driveTbody.innerHTML = ""; return;
+                    }
+
+                    // --- UPTIME INFO (UPDATED) ---
+                    if(data.server_info) {
+                        document.getElementById('serverVersion').innerText = data.server_info.version;
+                        document.getElementById('serverUptime').innerText = `${data.server_info.uptime_days} Days (Started: ${data.server_info.start_time})`;
+                    } else {
+                        document.getElementById('serverVersion').innerText = "Unknown";
+                        document.getElementById('serverUptime').innerText = "Unknown";
                     }
 
                     const alertBox = document.getElementById('alertBox');
@@ -796,14 +879,24 @@
                         });
                     }
 
-                    // --- NEW: CPU ---
+                    // --- ERROR LOGS ---
+                    const errContainer = document.getElementById('errorLogContainer');
+                    const errTbody = document.getElementById('errorLogBody');
+                    if(data.error_logs && data.error_logs.length > 0) {
+                        errContainer.style.display = 'block';
+                        data.error_logs.forEach(err => {
+                            errTbody.innerHTML += `<tr><td><strong>${err.log_date}</strong></td><td><span class="badge badge-neutral">${err.process}</span></td><td><span class="error-code">${err.message}</span></td></tr>`;
+                        });
+                    }
+
+                    // --- CPU ---
                     const cpuVal = data.cpu_stats.sql_cpu || 0;
                     document.getElementById('sqlCpuValue').innerText = cpuVal + '%';
                     const cpuBar = document.getElementById('cpuProgressBar');
                     cpuBar.style.width = cpuVal + '%';
                     cpuBar.style.background = cpuVal > 85 ? '#ef4444' : (cpuVal > 60 ? '#f59e0b' : '#3b82f6');
 
-                    // --- NEW: WAIT STATS ---
+                    // --- WAIT STATS ---
                     const waitTbody = document.getElementById('waitStatsBody');
                     waitTbody.innerHTML = "";
                     if (data.wait_stats && data.wait_stats.length > 0) {
@@ -815,7 +908,19 @@
                         waitTbody.innerHTML = `<tr><td colspan='3' class="text-center" style="color: #10b981; font-weight:bold;">No significant wait bottlenecks detected.</td></tr>`;
                     }
 
-                    // --- NEW: TEMPDB ---
+                    // --- ACTIVE CONNECTIONS ---
+                    const connContainer = document.getElementById('connectionsContainer');
+                    const connTbody = document.getElementById('connectionsBody');
+                    if(data.active_connections && data.active_connections.length > 0) {
+                        connContainer.style.display = 'block';
+                        // Show top 10
+                        data.active_connections.slice(0, 10).forEach(c => {
+                            let countBadge = c.count > 300 ? `<span class="badge badge-danger">${c.count}</span>` : `<span class="badge badge-neutral" style="background:#ccfbf1; color:#0f766e;">${c.count}</span>`;
+                            connTbody.innerHTML += `<tr><td><strong>${c.database}</strong></td><td>${c.login}</td><td class="text-right">${countBadge}</td></tr>`;
+                        });
+                    }
+
+                    // --- TEMPDB ---
                     const tdbTbody = document.getElementById('tempdbBody');
                     const tdb = data.tempdb_health;
                     let contentionBadge = tdb.contention_tasks > 0 ? `<span class="badge badge-danger">${tdb.contention_tasks} Tasks Blocked</span>` : `<span class="badge badge-success">Healthy (0)</span>`;
@@ -827,7 +932,7 @@
                         <td class="text-center">${contentionBadge}</td>
                     </tr>`;
 
-                    // --- NEW: CORRUPTION ---
+                    // --- CORRUPTION ---
                     const corrContainer = document.getElementById('corruptionContainer');
                     const corrTbody = document.getElementById('corruptionBody');
                     if (data.suspect_pages && data.suspect_pages.length > 0) {
@@ -835,6 +940,17 @@
                         data.suspect_pages.forEach(p => {
                             let errDesc = p.event_type === 1 ? 'Hardware Error (823/824)' : (p.event_type === 2 ? 'Bad Checksum' : 'Torn Page');
                             corrTbody.innerHTML += `<tr><td><strong>${p.db_name}</strong></td><td>File: ${p.file_id}</td><td>Page: ${p.page_id}</td><td><span class="badge badge-danger">${errDesc}</span></td></tr>`;
+                        });
+                    }
+
+                    // --- MISSING INDEXES ---
+                    const miContainer = document.getElementById('missingIndexContainer');
+                    const miTbody = document.getElementById('missingIndexBody');
+                    if(data.missing_indexes && data.missing_indexes.length > 0) {
+                        miContainer.style.display = 'block';
+                        data.missing_indexes.forEach(mi => {
+                            let impactBadge = `<span class="badge badge-success">+${mi.impact}%</span>`;
+                            miTbody.innerHTML += `<tr><td><strong>${mi.database}</strong></td><td>${mi.table}</td><td class="text-center">${impactBadge}</td><td><span class="sql-code" style="background:#064e3b; border-color:#022c22; color:#ecfdf5;">${mi.script}</span></td></tr>`;
                         });
                     }
 
@@ -920,6 +1036,8 @@
                 .catch(err => {
                     btn.innerHTML = "Refresh Dashboard";
                     btn.disabled = false;
+                    document.getElementById('serverVersion').innerText = "Connection Failed";
+                    document.getElementById('serverUptime').innerText = "Connection Failed";
                     dbTbody.innerHTML = `<tr><td colspan='7' class="text-center" style="color:red;">Failed to connect to backend.</td></tr>`;
                     console.error(err);
                     setToolsEnabled(false);
@@ -932,7 +1050,7 @@
             const tableSelect = document.getElementById('tableIndexSelect');
             const scanBtn = document.getElementById('indexBtn');
 
-            tableSelect.innerHTML = '<option value="all">-- All Tables (Slow) --</option>';
+            tableSelect.innerHTML = '<option value="all">-- All Tables --</option>';
             tableSelect.disabled = true;
 
             if (!selectedServer || !selectedDB) {
@@ -1024,6 +1142,12 @@
                     if (data.error) {
                         tbody.innerHTML = `<tr><td colspan='4' class="text-center" style="color:red;">Error: ${data.error}</td></tr>`; return;
                     }
+
+                    // Display cache badge if data came from the SQLite background cache
+                    if (data.cached) {
+                        showToast("Loaded instantly from local cache!", "info");
+                    }
+
                     globalIndexData = data.indexes;
                     if (globalIndexData.length === 0) {
                         tbody.innerHTML = "<tr><td colspan='4' class='text-center' style='padding: 30px; color: #10b981; font-weight: bold;'>✅ No highly fragmented large indexes found! System is healthy.</td></tr>";
