@@ -1,9 +1,11 @@
-# 📊 Lite DB Health Monitor (MSSQL)
-*A lightweight, zero-footprint web dashboard for real-time monitoring of SQL Server health, security, and performance.*
+<div align="center">
+  <h1>📊 Lite DB Health Monitor (MSSQL)</h1>
+  <p><i>A lightweight, zero-footprint web dashboard for real-time monitoring of SQL Server health, security, and performance.</i></p>
 
-![Python Version](https://img.shields.io/badge/Python-3.8+-blue?style=for-the-badge&logo=python)
-![SQL Server](https://img.shields.io/badge/SQL_Server-2012+-red?style=for-the-badge&logo=microsoft-sql-server)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+  <img src="https://img.shields.io/badge/Python-3.8+-blue?style=for-the-badge&logo=python" alt="Python Version">
+  <img src="https://img.shields.io/badge/SQL_Server-2012+-red?style=for-the-badge&logo=microsoft-sql-server" alt="SQL Server">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
+</div>
 
 ---
 
