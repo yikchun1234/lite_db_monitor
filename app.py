@@ -109,8 +109,8 @@ def background_index_scan():
                         latest_cache = IndexCache.query.filter_by(server_alias=server.alias, db_name=db_name).order_by(IndexCache.last_scanned.desc()).first()
                         if latest_cache:
                             time_since_scan = datetime.datetime.utcnow() - latest_cache.last_scanned
-                            if time_since_scan.total_seconds() < (5 * 3600):
-                                print(f"     [⏭️] Skipping Database: {db_name} (Already scanned {time_since_scan.total_seconds() / 3600:.1f} hours ago)")
+                            if time_since_scan.total_seconds() < (167 * 3600): # 167 hours
+                                print(f"     [⏭️] Skipping Database: {db_name} (Already scanned {time_since_scan.total_seconds() / 86400:.1f} days ago)")
                                 continue
 
                         print(f"     [🔎] Scanning Database: {db_name} (Throttled Mode)...")
@@ -523,7 +523,7 @@ if __name__ == '__main__':
                 print(f"Migration error: {e}")
 
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=background_index_scan, trigger="interval", hours=6, next_run_time=datetime.datetime.now())
+    scheduler.add_job(func=background_index_scan, trigger="interval", days=7, next_run_time=datetime.datetime.now())
     scheduler.start()
 
     app.run(host='0.0.0.0', port=5000, threaded=True)
