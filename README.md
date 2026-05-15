@@ -68,4 +68,7 @@ Before running the application, ensure you have the following installed:
 
 ---
 
-**Designed and Developed by Amos** *Protecting production one query at a time.*
+<div align="center">
+  <b>Designed and Developed by Amos</b><br>
+  <i>Protecting production one query at a time.</i>
+</div>
