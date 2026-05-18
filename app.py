@@ -115,7 +115,6 @@ def get_target_engine(alias):
 # ⏱️ BACKGROUND SCANNER LOGIC
 # ==========================================
 def perform_table_scan(server, engine, force=False):
-    """Executes the cross-database Ghost Table query and updates the SQLite cache."""
     if not force:
         latest_cache = TableStatsCache.query.filter_by(server_alias=server.alias).order_by(TableStatsCache.last_scanned.desc()).first()
         if latest_cache:
@@ -210,7 +209,6 @@ def perform_table_scan(server, engine, force=False):
         db.session.rollback()
 
 def perform_index_scan(server, engine):
-    """Executes the throttled Index Fragmentation scan and updates the SQLite cache."""
     try:
         with engine.connect() as conn:
             dbs = conn.execute(text("SELECT name FROM sys.databases WHERE database_id > 4 AND state_desc = 'ONLINE'")).mappings()
@@ -531,7 +529,7 @@ def get_metrics():
             except Exception:
                 brute_force_logs = []
 
-            # --- 🚀 LIVE, ULTRA-FAST DATABASE PURGE METRICS ---
+            # --- LIVE DATABASE PURGE METRICS ---
             db_purge_live_query = text("""
             WITH AggregateUsage AS (
                 SELECT 
@@ -561,6 +559,33 @@ def get_metrics():
             ORDER BY ActionPlan DESC, d.name;
             """)
             db_purge_stats = [{"database": r['DatabaseName'], "last_read": r['LastRead'], "last_write": r['LastWrite'], "action_plan": r['ActionPlan']} for r in conn.execute(db_purge_live_query).mappings()]
+
+
+            # --- 🚀 NEW HEALTH METRICS START HERE 🚀 ---
+            
+            # 1. TempDB File Space Usage
+            conn.execute(text("USE [tempdb];"))
+            tempdb_files_query = text("SELECT name AS FileName, physical_name AS PhysicalName, CAST((size * 8.0) / 1024 AS DECIMAL(10,2)) AS TotalSizeMB, CAST((FILEPROPERTY(name, 'SpaceUsed') * 8.0) / 1024 AS DECIMAL(10,2)) AS UsedSizeMB FROM sys.database_files;")
+            tempdb_files = [{"file_name": r['FileName'], "total_mb": float(r['TotalSizeMB']), "used_mb": float(r['UsedSizeMB']), "free_mb": float(r['TotalSizeMB']) - float(r['UsedSizeMB'])} for r in conn.execute(tempdb_files_query).mappings()]
+            conn.execute(text("USE [master];"))
+
+            # 2. Virtual Log Files (VLFs)
+            vlfs = []
+            try:
+                vlf_query = text("SELECT DB_NAME(database_id) AS DatabaseName, COUNT(*) AS Total_VLF_Count, SUM(CASE WHEN vlf_active = 1 THEN 1 ELSE 0 END) AS Active_VLF_Count FROM sys.dm_db_log_info(NULL) GROUP BY database_id ORDER BY Total_VLF_Count DESC;")
+                vlfs = [{"database": r['DatabaseName'], "total": int(r['Total_VLF_Count']), "active": int(r['Active_VLF_Count'])} for r in conn.execute(vlf_query).mappings()]
+            except Exception as e:
+                # Silently catch on older SQL Server versions (pre-2016 SP2) that don't have dm_db_log_info
+                pass
+
+            # 3. High-Impact Memory Clerks
+            clerks_query = text("SELECT TOP 5 type AS ClerkName, CAST(pages_kb / 1024.0 AS DECIMAL(10, 2)) AS Allocated_MB FROM sys.dm_os_memory_clerks ORDER BY pages_kb DESC;")
+            memory_clerks = [{"clerk_name": r['ClerkName'], "allocated_mb": float(r['Allocated_MB'])} for r in conn.execute(clerks_query).mappings()]
+
+            # 4. Ad-Hoc Plan Cache Bloat
+            plan_query = text("SELECT COUNT(*) AS TotalPlans, ISNULL(SUM(CAST(size_in_bytes AS BIGINT)) / 1024 / 1024, 0) AS TotalMB, ISNULL(SUM(CASE WHEN usecounts = 1 THEN 1 ELSE 0 END), 0) AS SingleUsePlans, ISNULL(SUM(CASE WHEN usecounts = 1 THEN CAST(size_in_bytes AS BIGINT) ELSE 0 END) / 1024 / 1024, 0) AS WastedMB FROM sys.dm_exec_cached_plans WHERE objtype = 'Adhoc';")
+            p_row = conn.execute(plan_query).mappings().first()
+            plan_cache = {"total_plans": int(p_row['TotalPlans']), "total_mb": float(p_row['TotalMB']), "single_use_plans": int(p_row['SingleUsePlans']), "wasted_mb": float(p_row['WastedMB'])} if p_row else None
 
 
             # --- FETCH GHOST TABLES FROM SQLITE CACHE ---
@@ -593,7 +618,8 @@ def get_metrics():
                 "missing_indexes": missing_indexes, "error_logs": error_logs, "ram_usage": ram_usage, 
                 "running_jobs": running_jobs, "io_latency": io_latency, "brute_force": brute_force_logs,
                 "table_usage_stats": table_stats, "table_cache_time": table_cache_time,
-                "db_purge_stats": db_purge_stats
+                "db_purge_stats": db_purge_stats,
+                "tempdb_files": tempdb_files, "vlfs": vlfs, "memory_clerks": memory_clerks, "plan_cache": plan_cache
             })
 
     except Exception as e:
