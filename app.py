@@ -54,15 +54,6 @@ class TableStatsCache(db.Model):
     last_seek = db.Column(db.String(50))
     last_scanned = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
-class DatabasePurgeCache(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    server_alias = db.Column(db.String(100), index=True)
-    db_name = db.Column(db.String(100))
-    total_tables = db.Column(db.Integer)
-    dead_tables = db.Column(db.Integer)
-    action_plan = db.Column(db.String(200))
-    last_scanned = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-
 # ==========================================
 # 🔐 ADMIN CREDENTIALS & ENCRYPTION
 # ==========================================
@@ -116,14 +107,12 @@ def get_target_engine(alias):
 # ==========================================
 def perform_table_scan(server, engine, force=False):
     """Executes the cross-database Ghost Table query and updates the SQLite cache."""
-    
-    # --- 🛡️ 7-DAY CACHE BYPASS LOGIC ---
     if not force:
         latest_cache = TableStatsCache.query.filter_by(server_alias=server.alias).order_by(TableStatsCache.last_scanned.desc()).first()
         if latest_cache:
             time_since_scan = datetime.datetime.utcnow() - latest_cache.last_scanned
-            if time_since_scan.total_seconds() < (167 * 3600): # Skip if newer than 7 days
-                print(f"     [⏭️] Skipping Ghost Table & DB Scan for: {server.alias} (Cache is under 7 days old)")
+            if time_since_scan.total_seconds() < (167 * 3600): 
+                print(f"     [⏭️] Skipping Ghost Table Scan for: {server.alias} (Cache is under 7 days old)")
                 return
 
     try:
@@ -188,8 +177,6 @@ def perform_table_scan(server, engine, force=False):
             results = conn.execute(wrapper_query).mappings()
             
             TableStatsCache.query.filter_by(server_alias=server.alias).delete()
-            DatabasePurgeCache.query.filter_by(server_alias=server.alias).delete()
-            
             current_time = datetime.datetime.utcnow()
             
             for r in results:
@@ -206,48 +193,6 @@ def perform_table_scan(server, engine, force=False):
                     last_scanned=current_time
                 )
                 db.session.add(new_stat)
-
-            db_purge_query = text(f"""
-            WITH AllTables AS (
-                {final_query}
-            ),
-            CategorizedTables AS (
-                SELECT DatabaseName, SchemaName, TableName, TotalRows,
-                CASE 
-                    WHEN (LastUserUpdate IS NULL OR LastUserUpdate <= '2024-12-31') AND (LastUserScan IS NULL OR LastUserScan <= '2024-12-31') AND (LastUserSeek IS NULL OR LastUserSeek <= '2024-12-31') THEN 'SAFE TO PURGE: Dead Table'
-                    WHEN (LastUserUpdate IS NULL OR LastUserUpdate <= '2024-12-31') AND (LastUserScan > '2024-12-31' OR LastUserSeek > '2024-12-31') THEN 'LOOK CLOSER: Read-Only / Lookup Table'
-                    WHEN LastUserUpdate > '2024-12-31' THEN 'ACTIVE: Do Not Touch'
-                    ELSE 'REVIEW: Unknown State' 
-                END AS CleanupStatus
-                FROM AllTables 
-                WHERE TotalRows > 0
-            )
-            SELECT 
-                DatabaseName,
-                COUNT(*) AS TotalTables,
-                SUM(CASE WHEN CleanupStatus = 'SAFE TO PURGE: Dead Table' THEN 1 ELSE 0 END) AS DeadTablesCount,
-                CASE 
-                    WHEN COUNT(*) = SUM(CASE WHEN CleanupStatus = 'SAFE TO PURGE: Dead Table' THEN 1 ELSE 0 END) AND COUNT(*) > 0
-                    THEN 'SAFE TO RENAME/DETACH (Monitor 1-2 Weeks)'
-                    ELSE 'ACTIVE/MIXED: DB still has active tables'
-                END AS DatabaseActionPlan
-            FROM CategorizedTables
-            WHERE DatabaseName NOT IN ('msdb','tempdb','model','ReportServer', 'ReportServerTempDB')
-            GROUP BY DatabaseName
-            ORDER BY DatabaseActionPlan DESC, DatabaseName;
-            """)
-
-            db_results = conn.execute(db_purge_query).mappings()
-            for r in db_results:
-                new_db_stat = DatabasePurgeCache(
-                    server_alias=server.alias,
-                    db_name=r['DatabaseName'],
-                    total_tables=int(r['TotalTables'] or 0),
-                    dead_tables=int(r['DeadTablesCount'] or 0),
-                    action_plan=r['DatabaseActionPlan'],
-                    last_scanned=current_time
-                )
-                db.session.add(new_db_stat)
 
             db.session.commit()
             
@@ -267,7 +212,7 @@ def perform_index_scan(server, engine):
                 latest_cache = IndexCache.query.filter_by(server_alias=server.alias, db_name=db_name).order_by(IndexCache.last_scanned.desc()).first()
                 if latest_cache:
                     time_since_scan = datetime.datetime.utcnow() - latest_cache.last_scanned
-                    if time_since_scan.total_seconds() < (167 * 3600): # Skip if newer than 7 days
+                    if time_since_scan.total_seconds() < (167 * 3600):
                         print(f"     [⏭️] Skipping Index Scan for: {db_name} (Cache is active)")
                         continue
 
@@ -322,7 +267,6 @@ def perform_index_scan(server, engine):
                                 db.session.rollback()
                                 continue
                                 
-                        # --- 🛡️ WRITE A CLEAN MARKER IF THE DB IS HEALTHY ---
                         if not found_fragmentation:
                             clean_marker = IndexCache(
                                 server_alias=server.alias, 
@@ -342,7 +286,6 @@ def perform_index_scan(server, engine):
         print(f"  [!] Error connecting to {server.alias}: {str(e)}")
 
 def master_background_scan():
-    """Master job that runs both table scans and index scans sequentially."""
     print(f"\n[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🚀 STARTING MASTER BACKGROUND SCANS (TABLES -> INDEXES)...")
     with app.app_context():
         servers = ServerConfig.query.all()
@@ -467,7 +410,6 @@ def delete_server():
             if alias in target_engines: del target_engines[alias]
             IndexCache.query.filter_by(server_alias=alias).delete()
             TableStatsCache.query.filter_by(server_alias=alias).delete()
-            DatabasePurgeCache.query.filter_by(server_alias=alias).delete()
             db.session.delete(server)
             db.session.commit()
             return jsonify({"success": True, "message": "Server deleted successfully."})
@@ -580,6 +522,38 @@ def get_metrics():
             except Exception:
                 brute_force_logs = []
 
+            # --- 🚀 NEW: LIVE, ULTRA-FAST DATABASE PURGE METRICS ---
+            db_purge_live_query = text("""
+            WITH AggregateUsage AS (
+                SELECT 
+                    database_id, 
+                    MAX(last_user_seek) AS MaxSeek, 
+                    MAX(last_user_scan) AS MaxScan, 
+                    MAX(last_user_lookup) AS MaxLookup, 
+                    MAX(last_user_update) AS MaxUpdate
+                FROM sys.dm_db_index_usage_stats 
+                GROUP BY database_id
+            )
+            SELECT 
+                d.name AS DatabaseName,
+                ISNULL(CONVERT(VARCHAR, u.MaxUpdate, 120), 'Never') AS LastWrite,
+                ISNULL(CONVERT(VARCHAR, (SELECT MAX(v) FROM (VALUES (u.MaxSeek), (u.MaxScan), (u.MaxLookup)) AS value(v)), 120), 'Never') AS LastRead,
+                CASE 
+                    WHEN (u.MaxUpdate IS NULL OR u.MaxUpdate <= '2024-12-31') 
+                     AND (u.MaxScan IS NULL OR u.MaxScan <= '2024-12-31') 
+                     AND (u.MaxSeek IS NULL OR u.MaxSeek <= '2024-12-31') 
+                     AND (u.MaxLookup IS NULL OR u.MaxLookup <= '2024-12-31') 
+                    THEN 'SAFE TO RENAME/DETACH (Monitor 1-2 Weeks)'
+                    ELSE 'ACTIVE: DB has activity'
+                END AS ActionPlan
+            FROM sys.databases d
+            LEFT JOIN AggregateUsage u ON d.database_id = u.database_id
+            WHERE d.database_id > 4 AND d.state_desc = 'ONLINE' AND d.name NOT IN ('ReportServer', 'ReportServerTempDB')
+            ORDER BY ActionPlan DESC, d.name;
+            """)
+            db_purge_stats = [{"database": r['DatabaseName'], "last_read": r['LastRead'], "last_write": r['LastWrite'], "action_plan": r['ActionPlan']} for r in conn.execute(db_purge_live_query).mappings()]
+
+
             # --- FETCH GHOST TABLES FROM SQLITE CACHE ---
             cached_tables = TableStatsCache.query.filter_by(server_alias=server_name).all()
             table_stats = []
@@ -599,17 +573,6 @@ def get_metrics():
                         "last_scan": ts.last_scan, "last_seek": ts.last_seek
                     })
             
-            # --- FETCH DATABASE PURGE SUMMARY FROM SQLITE CACHE ---
-            cached_db_purge = DatabasePurgeCache.query.filter_by(server_alias=server_name).all()
-            db_purge_stats = [
-                {
-                    "database": d.db_name,
-                    "total_tables": d.total_tables,
-                    "dead_tables": d.dead_tables,
-                    "action_plan": d.action_plan
-                } for d in cached_db_purge
-            ]
-
             if len(alerts) == 0: alerts.append("✅ System is entirely healthy. No active alerts.")
 
             return jsonify({
@@ -630,7 +593,6 @@ def get_metrics():
 @app.route('/api/tables/refresh_cache', methods=['POST'])
 @login_required
 def refresh_table_cache():
-    """Manually triggers the Ghost Table background scan for a specific server."""
     server_alias = request.json.get('server')
     if not server_alias: return jsonify({"error": "No server specified"}), 400
     
@@ -639,7 +601,6 @@ def refresh_table_cache():
     if not server or not engine: return jsonify({"error": "Server connection invalid"}), 400
     
     perform_table_scan(server, engine, force=True) 
-    
     return jsonify({"success": True})
 
 # ---------- FETCH TABLES ----------
@@ -673,7 +634,6 @@ def get_indexes():
     cached_results = query.all()
     
     if cached_results:
-        # Ignore the healthy system marker when displaying to the user
         indexes = [{"table": r.table_name, "index": r.index_name, "fragmentation": r.fragmentation, "pages": r.page_count} for r in cached_results if r.table_name != "[System_Clean]"]
         return jsonify({"indexes": indexes, "cached": True})
         
@@ -736,7 +696,6 @@ if __name__ == '__main__':
             print(f"Migration error: {e}")
 
     scheduler = BackgroundScheduler()
-    # Schedule the master job that runs Tables -> Indexes sequentially every 7 days
     scheduler.add_job(func=master_background_scan, trigger="interval", days=7, next_run_time=datetime.datetime.now())
     scheduler.start()
 
