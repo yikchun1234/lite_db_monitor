@@ -126,7 +126,8 @@ def perform_table_scan(server, engine, force=False):
 
     try:
         with engine.connect() as conn:
-            safe_dbs_query = text("SELECT name FROM sys.databases WHERE state_desc = 'ONLINE' AND database_id > 4 AND HAS_DBACCESS(name) = 1;")
+            # --- 🛡️ EXCLUDE SYSTEM DATABASES ---
+            safe_dbs_query = text("SELECT name FROM sys.databases WHERE state_desc = 'ONLINE' AND database_id > 4 AND HAS_DBACCESS(name) = 1 AND name NOT IN ('ReportServer', 'ReportServerTempDB', 'SSISDB');")
             safe_dbs = [row['name'] for row in conn.execute(safe_dbs_query).mappings()]
             
             if not safe_dbs:
@@ -210,15 +211,14 @@ def perform_table_scan(server, engine, force=False):
         db.session.rollback()
 
 def perform_index_scan(server, engine, force=False):
-    """Executes the throttled Index Fragmentation scan and updates the SQLite cache."""
     try:
         with engine.connect() as conn:
-            dbs = conn.execute(text("SELECT name FROM sys.databases WHERE database_id > 4 AND state_desc = 'ONLINE'")).mappings()
+            # --- 🛡️ EXCLUDE SYSTEM DATABASES ---
+            dbs = conn.execute(text("SELECT name FROM sys.databases WHERE database_id > 4 AND state_desc = 'ONLINE' AND name NOT IN ('ReportServer', 'ReportServerTempDB', 'SSISDB')")).mappings()
             
             for db_row in dbs:
                 db_name = db_row['name']
                 
-                # --- 🛡️ 7-DAY CACHE BYPASS LOGIC ---
                 if not force:
                     latest_cache = IndexCache.query.filter_by(server_alias=server.alias, db_name=db_name).order_by(IndexCache.last_scanned.desc()).first()
                     if latest_cache:
@@ -536,7 +536,7 @@ def get_metrics():
             except Exception:
                 brute_force_logs = []
 
-            # --- LIVE DATABASE PURGE METRICS ---
+            # --- 🛡️ LIVE DATABASE PURGE METRICS (WITH SYSTEM DB EXCLUSIONS) ---
             db_purge_live_query = text("""
             WITH AggregateUsage AS (
                 SELECT 
@@ -562,7 +562,7 @@ def get_metrics():
                 END AS ActionPlan
             FROM sys.databases d
             LEFT JOIN AggregateUsage u ON d.database_id = u.database_id
-            WHERE d.database_id > 4 AND d.state_desc = 'ONLINE' AND d.name NOT IN ('ReportServer', 'ReportServerTempDB')
+            WHERE d.database_id > 4 AND d.state_desc = 'ONLINE' AND d.name NOT IN ('ReportServer', 'ReportServerTempDB', 'SSISDB')
             ORDER BY ActionPlan DESC, d.name;
             """)
             db_purge_stats = [{"database": r['DatabaseName'], "last_read": r['LastRead'], "last_write": r['LastWrite'], "action_plan": r['ActionPlan']} for r in conn.execute(db_purge_live_query).mappings()]
