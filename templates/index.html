@@ -469,18 +469,54 @@ function attemptLogin() {
                 </div>
             </div>
 
-            <!-- MEMORY USAGE -->
-            <div id="ramContainer" class="card" style="display: none; border-left: 4px solid #8b5cf6;">
-                <h3 style="color: #6d28d9;">🧠 Memory (RAM) Consumption by Database</h3>
+            <!-- MEMORY USAGE (Databases) & MEMORY CLERKS -->
+            <div style="display: flex; gap: 25px; flex-wrap: wrap; margin-bottom: 25px;">
+                <div id="ramContainer" class="card" style="flex: 1; display: none; border-left: 4px solid #8b5cf6; margin-bottom: 0;">
+                    <h3 style="color: #6d28d9;">🧠 RAM Usage (Buffer Pool)</h3>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Database <span class="info-icon has-tooltip" data-tooltip="The database currently caching data pages into the server's RAM.">?</span></th>
+                                    <th class="text-right">RAM Used (MB) <span class="info-icon has-tooltip" data-tooltip="Total Megabytes of physical memory dedicated to this specific database right now. If a database is hogging RAM unexpectedly, check for bad queries doing massive table scans.">?</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="ramBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="clerksContainer" class="card" style="flex: 1; display: none; border-left: 4px solid #a855f7; margin-bottom: 0;">
+                    <h3 style="color: #9333ea;">🧠 Memory Clerks (System RAM)</h3>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Clerk Type <span class="info-icon has-tooltip" data-tooltip="Internal SQL Server processes consuming RAM.<br><br><strong>MEMORYCLERK_SQLBUFFERPOOL:</strong> Normal data cache.<br><strong>CACHESTORE_SQLCP:</strong> Query Plan Cache (Watch out if this is massive!)">?</span></th>
+                                    <th class="text-right">Allocated (MB) <span class="info-icon has-tooltip" data-tooltip="How much system memory this clerk is currently hogging.">?</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="clerksBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AD-HOC PLAN CACHE -->
+            <div id="planCacheContainer" class="card" style="display: none; border-left: 4px solid #6366f1;">
+                <h3 style="color: #4f46e5;">🗑️ Ad-Hoc Plan Cache Bloat</h3>
+                <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">Detects if poorly written unparameterized queries are filling up your RAM with single-use junk plans.</p>
                 <div class="table-responsive">
                     <table>
                         <thead>
                             <tr>
-                                <th>Database <span class="info-icon has-tooltip" data-tooltip="The database currently caching data pages into the server's RAM (Buffer Pool).">?</span></th>
-                                <th class="text-right">RAM Used (MB) <span class="info-icon has-tooltip" data-tooltip="Total Megabytes of physical memory dedicated to this specific database right now. If a database is hogging RAM unexpectedly, check for bad queries doing massive table scans.">?</span></th>
+                                <th class="text-right">Total Plans <span class="info-icon has-tooltip" data-tooltip="Total number of raw ad-hoc queries currently cached in memory.">?</span></th>
+                                <th class="text-right">Total Size (MB) <span class="info-icon has-tooltip" data-tooltip="Total RAM consumed by these plans.">?</span></th>
+                                <th class="text-right">Single-Use Plans <span class="info-icon has-tooltip" data-tooltip="Plans that were executed exactly ONE time and never reused. This is pure waste!">?</span></th>
+                                <th class="text-right">Wasted RAM (MB) <span class="info-icon has-tooltip" data-tooltip="<strong>DANGER:</strong> If this is gigabytes of wasted space, developers need to parameterize their queries, or you must enable 'Optimize for Ad Hoc Workloads' at the server level.">?</span></th>
                             </tr>
                         </thead>
-                        <tbody id="ramBody"></tbody>
+                        <tbody id="planCacheBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -626,10 +662,31 @@ function attemptLogin() {
                 </div>
             </div>
 
-            <!-- TEMPDB -->
-            <div class="card" style="border-left: 4px solid #f59e0b;">
-                <h3 style="color: #d97706;">🔥 TempDB Health & Contention</h3>
+            <!-- VIRTUAL LOG FILES (VLFs) -->
+            <div id="vlfContainer" class="card" style="display: none; border-left: 4px solid #ec4899;">
+                <h3 style="color: #db2777;">🪵 Virtual Log Files (VLFs) Fragmentation</h3>
+                <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">High VLF counts cripple database recovery times and log backup performance.</p>
                 <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Database Name <span class="info-icon has-tooltip" data-tooltip="The database transaction log being analyzed.">?</span></th>
+                                <th class="text-right">Total VLFs <span class="info-icon has-tooltip" data-tooltip="<strong>WARNING:</strong> If this number is over 1000, your transaction log is heavily fragmented. <br><br><em>Fix:</em> Wait for an off-hours window, run DBCC SHRINKFILE on the log, and re-grow it in large chunks (e.g., 4000MB or 8000MB) instead of small auto-growths.">?</span></th>
+                                <th class="text-right">Active VLFs <span class="info-icon has-tooltip" data-tooltip="VLFs currently containing active transactions that have not yet been backed up.">?</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="vlfBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TEMPDB HEALTH & FILES -->
+            <div class="card" style="border-left: 4px solid #f59e0b;">
+                <h3 style="color: #d97706;">🔥 TempDB Health & Configuration</h3>
+                <p style="color: #64748b; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">Checks for internal memory contention and ensures tempdb physical files are properly balanced.</p>
+
+                <h4 style="margin-bottom: 5px; font-size: 14px; color: #475569;">Object Allocation & Contention</h4>
+                <div class="table-responsive" style="margin-bottom: 20px;">
                     <table>
                         <thead>
                             <tr>
@@ -642,6 +699,23 @@ function attemptLogin() {
                         </thead>
                         <tbody id="tempdbBody"></tbody>
                     </table>
+                </div>
+
+                <div id="tempdbFilesWrapper" style="display: none;">
+                    <h4 style="margin-bottom: 5px; font-size: 14px; color: #475569;">Physical Data Files Balance</h4>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Logical File Name <span class="info-icon has-tooltip" data-tooltip="The internal name of the tempdb data/log file.">?</span></th>
+                                    <th class="text-right">Total Size (MB) <span class="info-icon has-tooltip" data-tooltip="<strong>BEST PRACTICE:</strong> All TempDB data files (.mdf/.ndf) must be EXACTLY the same size to ensure proportional fill works correctly. If one is bigger than the others, queries will slow down.">?</span></th>
+                                    <th class="text-right">Used Size (MB) <span class="info-icon has-tooltip" data-tooltip="Data currently sitting inside this specific file.">?</span></th>
+                                    <th class="text-right">Free Size (MB) <span class="info-icon has-tooltip" data-tooltip="Empty space inside this file.">?</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tempdbFilesBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -1245,12 +1319,12 @@ function fetchMetrics() {
     tableSelect.innerHTML = '<option value="all">-- All Tables --</option>';
     tableSelect.disabled = true;
 
-    const hideElements = ['alertBox', 'longQueriesContainer', 'failedJobsContainer', 'agContainer', 'indexResults', 'securityResults', 'corruptionContainer', 'errorLogContainer', 'connectionsContainer', 'missingIndexContainer', 'ramContainer', 'runningJobsContainer', 'ioLatencyContainer', 'bruteForceContainer', 'tableStatsContainer', 'dbPurgeContainer'];
+    const hideElements = ['alertBox', 'longQueriesContainer', 'failedJobsContainer', 'agContainer', 'indexResults', 'securityResults', 'corruptionContainer', 'errorLogContainer', 'connectionsContainer', 'missingIndexContainer', 'ramContainer', 'clerksContainer', 'planCacheContainer', 'vlfContainer', 'tempdbFilesWrapper', 'runningJobsContainer', 'ioLatencyContainer', 'bruteForceContainer', 'tableStatsContainer', 'dbPurgeContainer'];
     hideElements.forEach(id => {
         document.getElementById(id).style.display = 'none';
     });
 
-    const clearBodies = ['indexTableBody', 'indexPagination', 'orphanedTableBody', 'ownerTableBody', 'corruptionBody', 'errorLogBody', 'connectionsBody', 'missingIndexBody', 'ramBody', 'runningJobsBody', 'ioLatencyBody', 'bruteForceBody', 'tableStatsBody', 'waitStatsBody', 'tempdbBody', 'sysadminBody', 'restoreBody', 'dbTableBody', 'driveTableBody', 'dbPurgeBody'];
+    const clearBodies = ['indexTableBody', 'indexPagination', 'orphanedTableBody', 'ownerTableBody', 'corruptionBody', 'errorLogBody', 'connectionsBody', 'missingIndexBody', 'ramBody', 'clerksBody', 'planCacheBody', 'vlfBody', 'tempdbFilesBody', 'runningJobsBody', 'ioLatencyBody', 'bruteForceBody', 'tableStatsBody', 'waitStatsBody', 'tempdbBody', 'sysadminBody', 'restoreBody', 'dbTableBody', 'driveTableBody', 'dbPurgeBody'];
     clearBodies.forEach(id => {
         document.getElementById(id).innerHTML = '';
     });
@@ -1362,6 +1436,34 @@ function fetchMetrics() {
                 });
             }
 
+            // Memory Clerks
+            const clerksContainer = document.getElementById('clerksContainer');
+            const clerksTbody = document.getElementById('clerksBody');
+            if (data.memory_clerks && data.memory_clerks.length > 0) {
+                clerksContainer.style.display = 'block';
+                data.memory_clerks.forEach(c => {
+                    let cBadge = c.allocated_mb > 5000 ? `<span class="badge badge-danger">${c.allocated_mb.toLocaleString()} MB</span>` : `<span class="badge badge-neutral">${c.allocated_mb.toLocaleString()} MB</span>`;
+                    clerksTbody.innerHTML += `<tr><td><strong>${c.clerk_name}</strong></td><td class="text-right">${cBadge}</td></tr>`;
+                });
+            }
+
+            // Plan Cache Bloat
+            const pcContainer = document.getElementById('planCacheContainer');
+            const pcTbody = document.getElementById('planCacheBody');
+            if (data.plan_cache) {
+                pcContainer.style.display = 'block';
+                let pc = data.plan_cache;
+                let singleUseBadge = pc.single_use_plans > 10000 ? `<span class="badge badge-warning">${pc.single_use_plans.toLocaleString()}</span>` : `<span class="badge badge-success">${pc.single_use_plans.toLocaleString()}</span>`;
+                let wasteBadge = pc.wasted_mb > 1000 ? `<span class="badge badge-danger">${pc.wasted_mb.toLocaleString(undefined, {minimumFractionDigits: 2})} MB</span>` : `<span style="font-weight: bold; color: #10b981;">${pc.wasted_mb.toLocaleString(undefined, {minimumFractionDigits: 2})} MB</span>`;
+
+                pcTbody.innerHTML = `<tr>
+                    <td class="text-right">${pc.total_plans.toLocaleString()}</td>
+                    <td class="text-right">${pc.total_mb.toLocaleString(undefined, {minimumFractionDigits: 2})} MB</td>
+                    <td class="text-right">${singleUseBadge}</td>
+                    <td class="text-right">${wasteBadge}</td>
+                </tr>`;
+            }
+
             // IO Latency
             const ioContainer = document.getElementById('ioLatencyContainer');
             const ioTbody = document.getElementById('ioLatencyBody');
@@ -1407,6 +1509,37 @@ function fetchMetrics() {
                 <td class="text-right">${tdb.free_mb.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                 <td class="text-center">${contentionBadge}</td>
             </tr>`;
+
+            // TempDB Files
+            const tdbfContainer = document.getElementById('tempdbFilesWrapper');
+            const tdbfTbody = document.getElementById('tempdbFilesBody');
+            if (data.tempdb_files && data.tempdb_files.length > 0) {
+                tdbfContainer.style.display = 'block';
+                data.tempdb_files.forEach(f => {
+                    tdbfTbody.innerHTML += `<tr>
+                        <td><strong>${f.file_name}</strong></td>
+                        <td class="text-right">${f.total_mb.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td class="text-right">${f.used_mb.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td class="text-right">${f.free_mb.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    </tr>`;
+                });
+            }
+
+            // Virtual Log Files (VLFs)
+            const vlfContainer = document.getElementById('vlfContainer');
+            const vlfTbody = document.getElementById('vlfBody');
+            if (data.vlfs && data.vlfs.length > 0) {
+                vlfContainer.style.display = 'block';
+                data.vlfs.slice(0, 10).forEach(v => {
+                    let totalBadge = v.total > 1000 ? `<span class="badge badge-danger">${v.total}</span>` : `<span class="badge badge-neutral">${v.total}</span>`;
+                    let activeBadge = v.active > 0 ? `<span style="font-weight:bold; color:#1d4ed8;">${v.active}</span>` : `<span style="color:#64748b;">${v.active}</span>`;
+                    vlfTbody.innerHTML += `<tr>
+                        <td><strong>${v.database}</strong></td>
+                        <td class="text-right">${totalBadge}</td>
+                        <td class="text-right">${activeBadge}</td>
+                    </tr>`;
+                });
+            }
 
             // Corruption
             const corrContainer = document.getElementById('corruptionContainer');
