@@ -656,7 +656,7 @@ function attemptLogin() {
                                 <th>Database Name</th>
                                 <th class="text-right">Last Read <span class="info-icon has-tooltip" data-tooltip="The exact timestamp of the most recent SELECT query against any table in this database.">?</span></th>
                                 <th class="text-right">Last Write <span class="info-icon has-tooltip" data-tooltip="The exact timestamp of the most recent INSERT, UPDATE, or DELETE against any table in this database.">?</span></th>
-                                <th>Action Plan <span class="info-icon has-tooltip" data-tooltip="Suggest to rename / detach and monitor for 1-2 weeks before remove or migrate.">?</span></th>
+                                <th>Action Plan <span class="info-icon has-tooltip" data-tooltip="<strong>SAFE TO RENAME/DETACH:</strong> Suggest to rename or detach and monitor for 1-2 weeks before permanent removal.<br><br><strong>ACTIVE: DB has activity:</strong> Database is in use. Safe to ignore.">?</span></th>
                             </tr>
                         </thead>
                         <tbody id="dbPurgeBody"></tbody>
