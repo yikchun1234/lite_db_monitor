@@ -157,6 +157,10 @@
         .btn-indigo:hover:not(:disabled) { background: #4f46e5; box-shadow: 0 6px 10px -1px rgba(99, 102, 241, 0.3); }
         .btn-indigo:active:not(:disabled) { box-shadow: 0 1px 2px rgba(99, 102, 241, 0.2); }
 
+        .btn-cancel { background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; box-shadow: none; }
+        .btn-cancel:hover:not(:disabled) { background: #f1f5f9; color: #0f172a; border-color: #94a3b8; box-shadow: none; }
+        .btn-cancel:active:not(:disabled) { background: #e2e8f0; }
+
         .btn-page { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; box-shadow: none; font-size: 13px; height: 32px; padding: 0 15px; min-width: 100px;}
         .btn-page:hover:not(:disabled) { background: #e2e8f0; box-shadow: none; }
         .btn-page:active:not(:disabled) { background: #cbd5e1; }
@@ -931,7 +935,7 @@ function attemptLogin() {
                     </div>
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <span id="indexCacheTime" style="font-size: 13px; color: #64748b; font-weight: 600;"></span>
-                        <button class="btn-outline" style="padding: 6px 12px; font-size: 13px;" onclick="confirmRefreshCache('index')">🔄 Update Cache</button>
+                        <button class="btn-outline" style="padding: 6px 12px; font-size: 13px; height: 32px;" onclick="confirmRefreshCache('index')">🔄 Update Cache</button>
                     </div>
                 </div>
                 <p style="color: #64748b; font-size: 13px; margin-top: 5px; margin-bottom: 15px;">Now utilizes a backend SQLite cache to guarantee zero-impact to production SQL Server performance!</p>
@@ -1052,13 +1056,12 @@ function attemptLogin() {
             <span style="color: #ef4444; font-weight: 600;">This action cannot be undone.</span>
         </p>
         <div style="display: flex; gap: 15px; justify-content: center;">
-            <button class="btn-page" style="flex: 1; padding: 12px; font-weight: 600;" onclick="closeDeleteServerModal()">Cancel</button>
-            <button class="btn-danger" style="flex: 1; padding: 12px; font-weight: 600;" id="confirmDeleteBtn" onclick="executeDeleteServer()">Yes, Delete</button>
+            <button class="btn-cancel" style="flex: 1;" onclick="closeDeleteServerModal()">Cancel</button>
+            <button class="btn-danger" style="flex: 1;" id="confirmDeleteBtn" onclick="executeDeleteServer()">Yes, Delete</button>
         </div>
     </div>
 </div>
 
-<!-- SINGLE SERVER REFRESH CONFIRMATION MODAL -->
 <div id="refreshConfirmModal" class="modal">
     <div class="modal-content" style="width: 380px; text-align: center; padding: 40px 30px;">
         <span class="close-btn" onclick="closeRefreshConfirmModal()">&times;</span>
@@ -1070,13 +1073,12 @@ function attemptLogin() {
             <strong>Do you wish to continue?</strong>
         </p>
         <div style="display: flex; gap: 15px; justify-content: center;">
-            <button class="btn-page" style="flex: 1; padding: 12px; font-weight: 600;" onclick="closeRefreshConfirmModal()">Cancel</button>
-            <button class="btn-success" style="flex: 1; padding: 12px; font-weight: 600;" id="executeRefreshBtn">Yes, Scan Now</button>
+            <button class="btn-cancel" style="flex: 1;" onclick="closeRefreshConfirmModal()">Cancel</button>
+            <button class="btn-success" style="flex: 1;" id="executeRefreshBtn">Yes, Scan Now</button>
         </div>
     </div>
 </div>
 
-<!-- GLOBAL SYNC MODAL -->
 <div id="globalSyncModal" class="modal">
     <div class="modal-content" style="width: 420px; text-align: left; padding: 40px 30px;">
         <span class="close-btn" onclick="closeGlobalSyncModal()">&times;</span>
@@ -1088,7 +1090,6 @@ function attemptLogin() {
             </p>
         </div>
 
-        <!-- WARNING BOX -->
         <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 12px 15px; border-radius: 0 6px 6px 0; margin-bottom: 20px;">
             <strong style="color: #991b1b; font-size: 13px;">⚠️ Heavy Processing Warning</strong>
             <p style="color: #b91c1c; font-size: 12px; margin: 5px 0 0 0; line-height: 1.4;">
@@ -1107,8 +1108,8 @@ function attemptLogin() {
         </label>
 
         <div style="display: flex; gap: 15px; justify-content: center; margin-top: 25px;">
-            <button class="btn-page" style="flex: 1; padding: 12px; font-weight: 600;" onclick="closeGlobalSyncModal()">Cancel</button>
-            <button class="btn-outline-purple" style="flex: 1; padding: 12px; font-weight: 600; color: white; background: #8b5cf6;" id="executeGlobalBtn" onclick="executeGlobalSync()">Yes, Scan Now</button>
+            <button class="btn-cancel" style="flex: 1;" onclick="closeGlobalSyncModal()">Cancel</button>
+            <button class="btn-outline-purple" style="flex: 1; color: white; background: #8b5cf6;" id="executeGlobalBtn" onclick="executeGlobalSync()">Yes, Scan Now</button>
         </div>
     </div>
 </div>
@@ -1535,7 +1536,7 @@ async function executeGlobalSync() {
         if(activeServers.length === 0) {
             showToast("No active servers found to scan.", "info");
             btn.innerHTML = "🔄 Update Global Cache";
-            btn.style.background = "white";
+            btn.style.background = "transparent";
             btn.style.color = "#8b5cf6";
             btn.disabled = false;
             return;
@@ -1573,12 +1574,11 @@ async function executeGlobalSync() {
         showToast("Network Error during bulk sync.", "error");
     } finally {
         btn.innerHTML = "🔄 Update Global Cache";
-        btn.style.background = "white";
+        btn.style.background = "transparent";
         btn.style.color = "#8b5cf6";
         btn.disabled = false;
     }
 }
-
 
 function fetchMetrics() {
     const selectedServer = document.getElementById('serverSelect').value;
