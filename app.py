@@ -30,6 +30,7 @@ class ServerConfig(db.Model):
     type = db.Column(db.String(50), default="sqlserver")
     user = db.Column(db.String(100), nullable=False)
     password = db.Column(db.String(500), nullable=False)
+    is_disabled = db.Column(db.Boolean, default=False) # NEW: Tracking Disabled Servers
 
 class IndexCache(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -98,7 +99,7 @@ def get_target_engine(alias):
         return target_engines[alias]
     
     server = ServerConfig.query.filter_by(alias=alias).first()
-    if not server:
+    if not server or server.is_disabled:
         return None
         
     pwd = decrypt_password(server.password)
@@ -115,7 +116,6 @@ def get_target_engine(alias):
 # ⏱️ BACKGROUND SCANNER LOGIC
 # ==========================================
 def perform_table_scan(server, engine, force=False):
-    """Executes the cross-database Ghost Table query and updates the SQLite cache."""
     if not force:
         latest_cache = TableStatsCache.query.filter_by(server_alias=server.alias).order_by(TableStatsCache.last_scanned.desc()).first()
         if latest_cache:
@@ -210,7 +210,6 @@ def perform_table_scan(server, engine, force=False):
         db.session.rollback()
 
 def perform_index_scan(server, engine):
-    """Executes the throttled Index Fragmentation scan and updates the SQLite cache."""
     try:
         with engine.connect() as conn:
             dbs = conn.execute(text("SELECT name FROM sys.databases WHERE database_id > 4 AND state_desc = 'ONLINE'")).mappings()
@@ -297,7 +296,8 @@ def perform_index_scan(server, engine):
 def master_background_scan():
     print(f"\n[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🚀 STARTING MASTER BACKGROUND SCANS (TABLES -> INDEXES)...")
     with app.app_context():
-        servers = ServerConfig.query.all()
+        # --- 🛡️ NEW: Ignore disabled servers during background scan ---
+        servers = ServerConfig.query.filter_by(is_disabled=False).all()
         for server in servers:
             print(f"  -> Connecting to Server: {server.alias}...")
             engine = get_target_engine(server.alias)
@@ -346,7 +346,8 @@ def logout():
 @login_required
 def get_databases():
     servers = ServerConfig.query.all()
-    return jsonify([s.alias for s in servers])
+    # --- 🛡️ NEW: Return objects including disabled status ---
+    return jsonify([{"alias": s.alias, "is_disabled": s.is_disabled} for s in servers])
 
 @app.route('/api/servers/add', methods=['POST'])
 @login_required
@@ -360,7 +361,8 @@ def add_server():
         server = ServerConfig(
             alias=alias, host=new_server.get("host", ""), port=new_server.get("port", ""), 
             type=new_server.get("type", "sqlserver"), user=new_server.get("user", ""), 
-            password=encrypt_password(new_server.get("password", ""))
+            password=encrypt_password(new_server.get("password", "")),
+            is_disabled=new_server.get("is_disabled", False)
         )
         db.session.add(server)
         db.session.commit()
@@ -375,7 +377,8 @@ def get_server_detail():
     alias = request.args.get('server')
     if not alias: return jsonify({"error": "No server provided"}), 400
     server = ServerConfig.query.filter_by(alias=alias).first()
-    if server: return jsonify({"host": server.host, "port": server.port, "user": server.user})
+    if server: 
+        return jsonify({"host": server.host, "port": server.port, "user": server.user, "is_disabled": server.is_disabled})
     return jsonify({"error": "Server not found"}), 404
 
 @app.route('/api/servers/edit', methods=['POST'])
@@ -400,6 +403,7 @@ def edit_server():
         server.host = data.get('host', server.host)
         server.port = data.get('port', server.port)
         server.user = data.get('user', server.user)
+        server.is_disabled = data.get('is_disabled', server.is_disabled) # NEW: Update disabled status
         if data.get('password') and data.get('password').strip() != "":
             server.password = encrypt_password(data['password'])
             
@@ -434,7 +438,7 @@ def get_metrics():
     engine = get_target_engine(server_name)
     
     if not engine:
-        return jsonify({"error": "Server not found or connection string invalid"}), 404
+        return jsonify({"error": "Server not found, invalid connection string, or server is marked as Disabled."}), 404
 
     try:
         with engine.connect() as conn:
@@ -716,6 +720,13 @@ def get_security():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        # --- 🚀 AUTOMATIC MIGRATION FOR is_disabled COLUMN ---
+        try:
+            db.session.execute(text("ALTER TABLE server_config ADD COLUMN is_disabled BOOLEAN DEFAULT 0"))
+            db.session.commit()
+            print("✅ Successfully migrated database: Added is_disabled column.")
+        except Exception:
+            db.session.rollback() # Column already exists, safe to ignore
         
     if os.path.exists('config.json'):
         try:
