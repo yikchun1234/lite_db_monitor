@@ -30,7 +30,7 @@ class ServerConfig(db.Model):
     type = db.Column(db.String(50), default="sqlserver")
     user = db.Column(db.String(100), nullable=False)
     password = db.Column(db.String(500), nullable=False)
-    is_disabled = db.Column(db.Boolean, default=False) # NEW: Tracking Disabled Servers
+    is_disabled = db.Column(db.Boolean, default=False)
 
 class IndexCache(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -209,7 +209,8 @@ def perform_table_scan(server, engine, force=False):
         print(f"     [!] Error processing tables for {server.alias}: {str(e)}")
         db.session.rollback()
 
-def perform_index_scan(server, engine):
+def perform_index_scan(server, engine, force=False):
+    """Executes the throttled Index Fragmentation scan and updates the SQLite cache."""
     try:
         with engine.connect() as conn:
             dbs = conn.execute(text("SELECT name FROM sys.databases WHERE database_id > 4 AND state_desc = 'ONLINE'")).mappings()
@@ -217,12 +218,14 @@ def perform_index_scan(server, engine):
             for db_row in dbs:
                 db_name = db_row['name']
                 
-                latest_cache = IndexCache.query.filter_by(server_alias=server.alias, db_name=db_name).order_by(IndexCache.last_scanned.desc()).first()
-                if latest_cache:
-                    time_since_scan = datetime.datetime.utcnow() - latest_cache.last_scanned
-                    if time_since_scan.total_seconds() < (167 * 3600):
-                        print(f"     [⏭️] Skipping Index Scan for: {db_name} (Cache is active)")
-                        continue
+                # --- 🛡️ 7-DAY CACHE BYPASS LOGIC ---
+                if not force:
+                    latest_cache = IndexCache.query.filter_by(server_alias=server.alias, db_name=db_name).order_by(IndexCache.last_scanned.desc()).first()
+                    if latest_cache:
+                        time_since_scan = datetime.datetime.utcnow() - latest_cache.last_scanned
+                        if time_since_scan.total_seconds() < (167 * 3600):
+                            print(f"     [⏭️] Skipping Index Scan for: {db_name} (Cache is active)")
+                            continue
 
                 print(f"     [🔎] Scanning Indexes: {db_name} (Throttled Mode)...")
                 try:
@@ -296,7 +299,6 @@ def perform_index_scan(server, engine):
 def master_background_scan():
     print(f"\n[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🚀 STARTING MASTER BACKGROUND SCANS (TABLES -> INDEXES)...")
     with app.app_context():
-        # --- 🛡️ NEW: Ignore disabled servers during background scan ---
         servers = ServerConfig.query.filter_by(is_disabled=False).all()
         for server in servers:
             print(f"  -> Connecting to Server: {server.alias}...")
@@ -346,7 +348,6 @@ def logout():
 @login_required
 def get_databases():
     servers = ServerConfig.query.all()
-    # --- 🛡️ NEW: Return objects including disabled status ---
     return jsonify([{"alias": s.alias, "is_disabled": s.is_disabled} for s in servers])
 
 @app.route('/api/servers/add', methods=['POST'])
@@ -403,7 +404,7 @@ def edit_server():
         server.host = data.get('host', server.host)
         server.port = data.get('port', server.port)
         server.user = data.get('user', server.user)
-        server.is_disabled = data.get('is_disabled', server.is_disabled) # NEW: Update disabled status
+        server.is_disabled = data.get('is_disabled', server.is_disabled) 
         if data.get('password') and data.get('password').strip() != "":
             server.password = encrypt_password(data['password'])
             
@@ -567,7 +568,7 @@ def get_metrics():
             db_purge_stats = [{"database": r['DatabaseName'], "last_read": r['LastRead'], "last_write": r['LastWrite'], "action_plan": r['ActionPlan']} for r in conn.execute(db_purge_live_query).mappings()]
 
 
-            # --- 🚀 NEW HEALTH METRICS START HERE 🚀 ---
+            # --- HEALTH METRICS ---
             
             # 1. TempDB File Space Usage
             conn.execute(text("USE [tempdb];"))
@@ -593,8 +594,8 @@ def get_metrics():
             plan_cache = {"total_plans": int(p_row['TotalPlans']), "total_mb": float(p_row['TotalMB']), "single_use_plans": int(p_row['SingleUsePlans']), "wasted_mb": float(p_row['WastedMB'])} if p_row else None
 
 
-            # --- FETCH GHOST TABLES FROM SQLITE CACHE ---
-            cached_tables = TableStatsCache.query.filter_by(server_alias=server_name).all()
+            # --- FETCH GHOST TABLES CACHE TIME ---
+            cached_tables = TableStatsCache.query.filter_by(server_alias=server_name).order_by(TableStatsCache.last_scanned.desc()).all()
             table_stats = []
             table_cache_time = "Never"
             
@@ -612,6 +613,16 @@ def get_metrics():
                         "last_scan": ts.last_scan, "last_seek": ts.last_seek
                     })
             
+            # --- FETCH INDEX CACHE TIME ---
+            cached_indexes = IndexCache.query.filter_by(server_alias=server_name).order_by(IndexCache.last_scanned.desc()).first()
+            index_cache_time = "Never"
+            if cached_indexes:
+                time_diff = datetime.datetime.utcnow() - cached_indexes.last_scanned
+                hours_ago = int(time_diff.total_seconds() / 3600)
+                if hours_ago < 1: index_cache_time = "Just now"
+                elif hours_ago < 24: index_cache_time = f"{hours_ago} hour(s) ago"
+                else: index_cache_time = f"{hours_ago // 24} day(s) ago"
+
             if len(alerts) == 0: alerts.append("✅ System is entirely healthy. No active alerts.")
 
             return jsonify({
@@ -624,7 +635,8 @@ def get_metrics():
                 "running_jobs": running_jobs, "io_latency": io_latency, "brute_force": brute_force_logs,
                 "table_usage_stats": table_stats, "table_cache_time": table_cache_time,
                 "db_purge_stats": db_purge_stats,
-                "tempdb_files": tempdb_files, "vlfs": vlfs, "memory_clerks": memory_clerks, "plan_cache": plan_cache
+                "tempdb_files": tempdb_files, "vlfs": vlfs, "memory_clerks": memory_clerks, "plan_cache": plan_cache,
+                "index_cache_time": index_cache_time
             })
 
     except Exception as e:
@@ -641,6 +653,19 @@ def refresh_table_cache():
     if not server or not engine: return jsonify({"error": "Server connection invalid"}), 400
     
     perform_table_scan(server, engine, force=True) 
+    return jsonify({"success": True})
+
+@app.route('/api/indexes/refresh_cache', methods=['POST'])
+@login_required
+def refresh_index_cache():
+    server_alias = request.json.get('server')
+    if not server_alias: return jsonify({"error": "No server specified"}), 400
+    
+    server = ServerConfig.query.filter_by(alias=server_alias).first()
+    engine = get_target_engine(server_alias)
+    if not server or not engine: return jsonify({"error": "Server connection invalid"}), 400
+    
+    perform_index_scan(server, engine, force=True) 
     return jsonify({"success": True})
 
 # ---------- FETCH TABLES ----------
@@ -720,13 +745,12 @@ def get_security():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        # --- 🚀 AUTOMATIC MIGRATION FOR is_disabled COLUMN ---
         try:
             db.session.execute(text("ALTER TABLE server_config ADD COLUMN is_disabled BOOLEAN DEFAULT 0"))
             db.session.commit()
             print("✅ Successfully migrated database: Added is_disabled column.")
         except Exception:
-            db.session.rollback() # Column already exists, safe to ignore
+            db.session.rollback() 
         
     if os.path.exists('config.json'):
         try:
