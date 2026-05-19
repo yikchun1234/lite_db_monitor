@@ -5,6 +5,11 @@
   <img src="https://img.shields.io/badge/Python-3.8+-blue?style=for-the-badge&logo=python" alt="Python Version">
   <img src="https://img.shields.io/badge/SQL_Server-2012+-red?style=for-the-badge&logo=microsoft-sql-server" alt="SQL Server">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/Flask-black?style=for-the-badge&logo=flask&logoColor=white" alt="Flask">
+  <img src="https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite">
+  <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
+  <img src="https://img.shields.io/github/last-commit/yikchun1234/lite_db_health_monitor_mssql?style=for-the-badge" alt="Last Commit">
+  <img src="https://img.shields.io/github/repo-size/yikchun1234/lite_db_health_monitor_mssql?style=for-the-badge" alt="Repo Size">
 </div>
 
 ---
