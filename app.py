@@ -40,7 +40,7 @@ class IndexCache(db.Model):
     index_name = db.Column(db.String(200))
     fragmentation = db.Column(db.Float)
     page_count = db.Column(db.Integer)
-    last_scanned = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    last_scanned = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
 
 class TableStatsCache(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -53,7 +53,7 @@ class TableStatsCache(db.Model):
     last_update = db.Column(db.String(50))
     last_scan = db.Column(db.String(50))
     last_seek = db.Column(db.String(50))
-    last_scanned = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    last_scanned = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
 
 class DatabasePurgeCache(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -62,7 +62,7 @@ class DatabasePurgeCache(db.Model):
     total_tables = db.Column(db.Integer)
     dead_tables = db.Column(db.Integer)
     action_plan = db.Column(db.String(200))
-    last_scanned = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    last_scanned = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
 
 # ==========================================
 # 🔐 ADMIN CREDENTIALS & ENCRYPTION
@@ -119,7 +119,7 @@ def perform_table_scan(server, engine, force=False):
     if not force:
         latest_cache = TableStatsCache.query.filter_by(server_alias=server.alias).order_by(TableStatsCache.last_scanned.desc()).first()
         if latest_cache:
-            time_since_scan = datetime.datetime.utcnow() - latest_cache.last_scanned
+            time_since_scan = datetime.datetime.now(datetime.UTC) - latest_cache.last_scanned.replace(tzinfo=datetime.UTC)
             if time_since_scan.total_seconds() < (167 * 3600): 
                 print(f"     [⏭️] Skipping Ghost Table Scan for: {server.alias} (Cache is under 7 days old)")
                 return
@@ -187,7 +187,7 @@ def perform_table_scan(server, engine, force=False):
             results = conn.execute(wrapper_query).mappings()
             
             TableStatsCache.query.filter_by(server_alias=server.alias).delete()
-            current_time = datetime.datetime.utcnow()
+            current_time = datetime.datetime.now(datetime.UTC)
             
             for r in results:
                 new_stat = TableStatsCache(
@@ -222,7 +222,7 @@ def perform_index_scan(server, engine, force=False):
                 if not force:
                     latest_cache = IndexCache.query.filter_by(server_alias=server.alias, db_name=db_name).order_by(IndexCache.last_scanned.desc()).first()
                     if latest_cache:
-                        time_since_scan = datetime.datetime.utcnow() - latest_cache.last_scanned
+                        time_since_scan = datetime.datetime.now(datetime.UTC) - latest_cache.last_scanned.replace(tzinfo=datetime.UTC)
                         if time_since_scan.total_seconds() < (167 * 3600):
                             print(f"     [⏭️] Skipping Index Scan for: {db_name} (Cache is active)")
                             continue
@@ -251,7 +251,7 @@ def perform_index_scan(server, engine, force=False):
                         IndexCache.query.filter_by(server_alias=server.alias, db_name=db_name).delete()
                         db.session.commit()
                         
-                        current_time = datetime.datetime.utcnow()
+                        current_time = datetime.datetime.now(datetime.UTC)
                         found_fragmentation = False
                         
                         for t in targets:
@@ -600,7 +600,7 @@ def get_metrics():
             table_cache_time = "Never"
             
             if cached_tables:
-                time_diff = datetime.datetime.utcnow() - cached_tables[0].last_scanned
+                time_diff = datetime.datetime.now(datetime.UTC) - cached_tables[0].last_scanned.replace(tzinfo=datetime.UTC)
                 hours_ago = int(time_diff.total_seconds() / 3600)
                 if hours_ago < 1: table_cache_time = "Just now"
                 elif hours_ago < 24: table_cache_time = f"{hours_ago} hour(s) ago"
@@ -617,7 +617,7 @@ def get_metrics():
             cached_indexes = IndexCache.query.filter_by(server_alias=server_name).order_by(IndexCache.last_scanned.desc()).first()
             index_cache_time = "Never"
             if cached_indexes:
-                time_diff = datetime.datetime.utcnow() - cached_indexes.last_scanned
+                time_diff = datetime.datetime.now(datetime.UTC) - cached_indexes.last_scanned.replace(tzinfo=datetime.UTC)
                 hours_ago = int(time_diff.total_seconds() / 3600)
                 if hours_ago < 1: index_cache_time = "Just now"
                 elif hours_ago < 24: index_cache_time = f"{hours_ago} hour(s) ago"
