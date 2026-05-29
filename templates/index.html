@@ -1548,18 +1548,29 @@ async function executeGlobalSync() {
             const s = activeServers[i];
             showToast(`Scanning [${i+1}/${activeServers.length}]: ${s.alias}`, "info");
 
+            // --- ADDED: is_global, current, and total to the JSON body ---
             if (doGhost) {
                 await fetch('/api/tables/refresh_cache', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({server: s.alias})
+                    body: JSON.stringify({
+                        server: s.alias, 
+                        is_global: true, 
+                        current: i+1, 
+                        total: activeServers.length
+                    })
                 });
             }
             if (doIndex) {
                 await fetch('/api/indexes/refresh_cache', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({server: s.alias})
+                    body: JSON.stringify({
+                        server: s.alias, 
+                        is_global: true, 
+                        current: i+1, 
+                        total: activeServers.length
+                    })
                 });
             }
         }
